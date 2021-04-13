@@ -5,4 +5,4 @@
 #### Funcionalidades por enquanto:
  * Renderização do globo como o Lab 5
  * Renderização do plano como o Lab 5
- * Renderização de uma mão que acompanha a posição da câmera, mas não a rotação
+ * Renderização de uma mão que acompanha a câmera

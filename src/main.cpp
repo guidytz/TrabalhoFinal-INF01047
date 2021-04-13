@@ -369,10 +369,8 @@ int main(int argc, char* argv[])
 
         glm::vec4 hand_pos = camera_position_c + glm::vec4(0.3f, -0.2f, -1.0f, 0.0f);
 
-        model = 
-        // projection 
-            //   * glm::inverse(view)
-               Matrix_Translate(hand_pos.x, hand_pos.y, hand_pos.z)  
+        model = model = glm::inverse(view)
+              * Matrix_Translate(0.3f, -0.3f, -1.0f)  
               * Matrix_Scale(0.1f, 0.1f, 0.1f)
               * Matrix_Rotate_X(1.57)
               * Matrix_Rotate_Y(-1.37);
