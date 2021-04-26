@@ -383,7 +383,7 @@ int main(int argc, char* argv[])
                 model = Matrix_Translate(0.0f,-1.0f,0.0f)
                     * Matrix_Scale(0.1f, 0.1f, 0.1f)
                     * Matrix_Rotate_X(-1.6f)
-                    * Matrix_Rotate_Z((float)glfwGetTime() * 0.1f);
+                    * Matrix_Rotate_Z((float)glfwGetTime() * 0.2f);
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
                 glUniform1i(object_id_uniform, TROPHY);
                 DrawVirtualObject("trophy");
@@ -1601,15 +1601,12 @@ void PrintObjModelInfo(ObjModel* model)
 }
 
 glm::vec4 calculate_Bezier_position(glm::vec4 p1, glm::vec4 p2, glm::vec4 p3, glm::vec4 p4, float t){
-    glm::vec4 c12 = p1 + t * (p2 - p1);
-    glm::vec4 c23 = p2 + t * (p3 - p2);
-    glm::vec4 c34 = p3 + t * (p4 - p3);
+    float b03 = (1 - t) * (1 - t) * (1 - t);
+    float b13 = 3 * t * (1 - t) * (1 - t);
+    float b23 = 3 * t * t * (1 - t);
+    float b33 = t * t * t;
 
-    glm::vec4 c123 = c12 + t * (c23 - c12); 
-    glm::vec4 c234 = c23 + t * (c34 - c23); 
-
-    glm::vec4 p = c123 + t * (c234 - c123);
-    return p;
+    return b03 * p1 + b13 * p2 + b23 * p3 + b33 * p4;
 }
 
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
