@@ -65,6 +65,9 @@ void main()
     // Vetor que define o sentido da câmera em relação ao ponto atual.
     vec4 v = normalize(camera_position - p);
 
+    // half-vector para o modelo de iluminação de Blinn-Phong
+    vec4 h = normalize(l + v);
+
     // Vetor que define o sentido da reflexão especular ideal.
     vec4 r = normalize(-l + 2 * n * dot(n, l));
 
@@ -75,7 +78,7 @@ void main()
     vec3 Kd; // Refletância difusa
     vec3 Ks; // Refletância especular
     vec3 Ka; // Refletância ambiente
-    float q; // Expoente especular para o modelo de iluminação de Phong
+    float q; // Expoente especular para o modelo de iluminação de Blinn-Phong
 
     if ( object_id == SPHERE )
     {
@@ -103,6 +106,7 @@ void main()
         Ks = vec3(0.0, 0.0, 0.0);
         Ka = vec3(0.1, 0.1, 0.1);
         Kd = texture(TextureImage0, vec2(U,V)).rgb;
+        q = 1;
     }
     else if ( object_id == HAND )
     {
@@ -120,6 +124,7 @@ void main()
         Ks = vec3(0.0, 0.0, 0.0);
         Ka = vec3(0.1, 0.1, 0.1);
         Kd = texture(TextureImage2, vec2(U,V)).rgb;
+        q = 1;
     }
     else if ( object_id == PLANE )
     {
@@ -130,6 +135,7 @@ void main()
         Ks = vec3(0.0, 0.0, 0.0);
         Ka = vec3(0.1, 0.1, 0.1);
         Kd = texture(TextureImage0, vec2(U,V)).rgb;
+        q = 1;
     }
     else if ( object_id == TROPHY ) 
     {
@@ -137,7 +143,7 @@ void main()
         Ks = vec3(0.8, 0.8, 0.8);
         Ka = vec3(0.1, 0.1, 0.1);
         Kd = vec3(0.54, 0.45, 0.0);
-        q = 45.0;
+        q = 80.0;
         l = v;
     }
 
@@ -154,12 +160,12 @@ void main()
     vec3 ambient_term = Ka * Ia; 
 
     // Termo especular utilizando o modelo de iluminação de Phong
-    vec3 phong_specular_term  = Ks * I * pow(max(0, dot(r, v)), q); 
+    vec3 blinn_phong_specular_term  = Ks * I * pow(max(0, dot(n, h)), q); 
 
     // Equação de Iluminação
     float lambert = max(0, dot(n,l));
 
-    color = lambert_diffuse_term + ambient_term + phong_specular_term; 
+    color = lambert_diffuse_term + ambient_term + blinn_phong_specular_term; 
 
     // Cor final com correção gamma, considerando monitor sRGB.
     // Veja https://en.wikipedia.org/w/index.php?title=Gamma_correction&oldid=751281772#Windows.2C_Mac.2C_sRGB_and_TV.2Fvideo_standard_gammas
