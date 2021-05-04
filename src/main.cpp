@@ -180,6 +180,7 @@ GLint projection_uniform;
 GLint object_id_uniform;
 GLint bbox_min_uniform;
 GLint bbox_max_uniform;
+GLboolean use_gouraud_shading_uniform;
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
@@ -187,8 +188,12 @@ GLuint g_NumLoadedTextures = 0;
 // Variável que determina que as caixas foram para o lugar (jogo terminou)
 bool victory = false;
 
+// Variável que controla a posição do trofeu na curva de Bezier
 float t = 0.0f;
 bool rising = true;
+
+// Variável que determina um instante de tempo da aplicação
+float delta_t = 0.001f;
 
 int main(int argc, char* argv[])
 {
@@ -318,7 +323,7 @@ int main(int argc, char* argv[])
     while (!glfwWindowShouldClose(window))
     {
         float curr_time = (float)glfwGetTime();
-        if (curr_time - last_update >= 0.001){
+        if (curr_time - last_update >= delta_t){
             last_update = curr_time;
             // Cor de fundo do framebuffer
             glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -330,6 +335,21 @@ int main(int argc, char* argv[])
             // Pedimos para a GPU utilizar o programa de GPU criado acima (contendo
             // os shaders de vértice e fragmentos).
             glUseProgram(program_id);
+
+            #define SPHERE  0
+            #define HAND    1
+            #define PLANE   2
+            #define TROPHY  3
+
+            // Agora computamos a matriz de Projeção.
+            glm::mat4 projection;
+
+            float nearplane = -0.1f;  // Posição do "near plane"
+            float farplane  = -10.0f; // Posição do "far plane"
+
+            // Projeção perspectiva na câmera
+            float field_of_view = 3.141592 / 3.0f;
+            projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
 
             if (victory){
                 // Computamos a posição da câmera utilizando coordenadas esféricas.  As
@@ -352,20 +372,6 @@ int main(int argc, char* argv[])
                 // definir o sistema de coordenadas da câmera.  Veja slides 2-14, 184-190 e 236-242 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
                 glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
-                // Agora computamos a matriz de Projeção.
-                glm::mat4 projection;
-
-                // Note que, no sistema de coordenadas da câmera, os planos near e far
-                // estão no sentido negativo! Veja slides 176-204 do documento Aula_09_Projecoes.pdf.
-                float nearplane = -0.1f;  // Posição do "near plane"
-                float farplane  = -10.0f; // Posição do "far plane"
-
-
-                // Projeção Perspectiva.
-                // Para definição do field of view (FOV), veja slides 205-215 do documento Aula_09_Projecoes.pdf.
-                float field_of_view = 3.141592 / 3.0f;
-                projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
-
                 glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
 
                 // Enviamos as matrizes "view" e "projection" para a placa de vídeo
@@ -374,11 +380,6 @@ int main(int argc, char* argv[])
                 glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
                 glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
-                #define SPHERE 0
-                #define BUNNY  1
-                #define PLANE  2
-                #define TROPHY 3
-
                 // Desenhamos o modelo do trofeu principal
                 model = Matrix_Translate(0.0f,-1.0f,0.0f)
                     * Matrix_Scale(0.1f, 0.1f, 0.1f)
@@ -386,10 +387,13 @@ int main(int argc, char* argv[])
                     * Matrix_Rotate_Z((float)glfwGetTime() * 0.2f);
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
                 glUniform1i(object_id_uniform, TROPHY);
+                glUniform1i(use_gouraud_shading_uniform, true);
                 DrawVirtualObject("trophy");
 
+                // Determina o acrescimo ou decrescimo no valor de t
                 t += rising ? 0.005 : -0.005;
 
+                // Verifica se t precisa aumentar ou diminuir
                 if (t >= 1) {
                     rising = false;
                     t = 1;
@@ -410,6 +414,7 @@ int main(int argc, char* argv[])
                     * Matrix_Rotate_Z(1.0f);
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
                 glUniform1i(object_id_uniform, TROPHY);
+                glUniform1i(use_gouraud_shading_uniform, true);
                 DrawVirtualObject("trophy");
 
                 p1 = glm::vec4(2.0f,-1.0f,-1.0f,1.0f);
@@ -424,6 +429,7 @@ int main(int argc, char* argv[])
                     * Matrix_Rotate_Z(-1.0f);
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
                 glUniform1i(object_id_uniform, TROPHY);
+                glUniform1i(use_gouraud_shading_uniform, true);
                 DrawVirtualObject("trophy");
             } else {
                 // Computação da posição da câmera
@@ -447,18 +453,6 @@ int main(int argc, char* argv[])
 
                 // PrintMatrix(view);
 
-                // Agora computamos a matriz de Projeção.
-                glm::mat4 projection;
-
-                float nearplane = -0.1f;  // Posição do "near plane"
-                float farplane  = -10.0f; // Posição do "far plane"
-
-
-                // Projeção perspectiva na câmera
-                float field_of_view = 3.141592 / 3.0f;
-                projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
-
-
                 glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
 
                 // Enviamos as matrizes "view" e "projection" para a placa de vídeo
@@ -467,10 +461,6 @@ int main(int argc, char* argv[])
                 glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
                 glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
-                #define SPHERE 0
-                #define HAND  1
-                #define PLANE  2
-
                 // Desenhamos o modelo da esfera
                 model = Matrix_Translate(-1.0f,0.0f,0.0f)
                     * Matrix_Rotate_Z(0.6f)
@@ -478,9 +468,10 @@ int main(int argc, char* argv[])
                     * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime() * 0.1f);
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
                 glUniform1i(object_id_uniform, SPHERE);
+                glUniform1i(use_gouraud_shading_uniform, false);
                 DrawVirtualObject("sphere");
 
-                model = model = glm::inverse(view)
+                model = glm::inverse(view)
                     * Matrix_Translate(0.3f, -0.3f, -1.0f)  
                     * Matrix_Scale(0.1f, 0.1f, 0.1f)
                     * Matrix_Rotate_X(1.57)
@@ -488,12 +479,14 @@ int main(int argc, char* argv[])
                 
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
                 glUniform1i(object_id_uniform, HAND);
+                glUniform1i(use_gouraud_shading_uniform, false);
                 DrawVirtualObject("hand");
 
                 // Desenhamos o plano do chão
                 model = Matrix_Translate(0.0f,-1.1f,0.0f);
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
                 glUniform1i(object_id_uniform, PLANE);
+                glUniform1i(use_gouraud_shading_uniform, false);
                 DrawVirtualObject("plane");
             }
 
@@ -665,6 +658,8 @@ void LoadShadersFromFiles()
     object_id_uniform       = glGetUniformLocation(program_id, "object_id"); // Variável "object_id" em shader_fragment.glsl
     bbox_min_uniform        = glGetUniformLocation(program_id, "bbox_min");
     bbox_max_uniform        = glGetUniformLocation(program_id, "bbox_max");
+
+    use_gouraud_shading_uniform = glGetUniformLocation(program_id, "use_gouraud_shading");
 
     // Variáveis em "shader_fragment.glsl" para acesso das imagens de textura
     glUseProgram(program_id);
