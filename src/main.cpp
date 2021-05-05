@@ -116,6 +116,9 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
+// Calcula a posicao de um ponto usando uma curva de Bezier cubica
+glm::vec4 calculate_Bezier_position(glm::vec4 p1, glm::vec4 p2, glm::vec4 p3, glm::vec4 p4, float t);
+
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
 struct SceneObject
@@ -155,6 +158,7 @@ bool g_MiddleMouseButtonPressed = false; // Análogo para botão do meio do mous
 // usuário através do mouse (veja função CursorPosCallback()). A posição
 // efetiva da câmera é calculada dentro da função main(), dentro do loop de
 // renderização.
+float g_CameraDistance = 3.5f; // Distância da câmera para a origem
 float g_CameraTheta = - M_PI_2; // Ângulo no plano ZX em relação ao eixo Z
 float g_CameraPhi = 0.0f;   // Ângulo em relação ao eixo Y
 float g_CameraSpeed[4] = {0.0f};
@@ -176,9 +180,20 @@ GLint projection_uniform;
 GLint object_id_uniform;
 GLint bbox_min_uniform;
 GLint bbox_max_uniform;
+GLboolean use_gouraud_shading_uniform;
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
+
+// Variável que determina que as caixas foram para o lugar (jogo terminou)
+bool victory = false;
+
+// Variável que controla a posição do trofeu na curva de Bezier
+float t = 0.0f;
+bool rising = true;
+
+// Variável que determina um instante de tempo da aplicação
+float delta_t = 0.001f;
 
 int main(int argc, char* argv[])
 {
@@ -276,6 +291,10 @@ int main(int argc, char* argv[])
     ComputeNormals(&planemodel);
     BuildTrianglesAndAddToVirtualScene(&planemodel);
 
+    ObjModel trophymodel("../../data/trophy/trophy.obj");
+    ComputeNormals(&trophymodel);
+    BuildTrianglesAndAddToVirtualScene(&trophymodel);
+
     if ( argc > 1 )
     {
         ObjModel model(argv[1]);
@@ -300,122 +319,209 @@ int main(int argc, char* argv[])
     glm::mat4 the_view;
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
+    float last_update = (float)glfwGetTime();
     while (!glfwWindowShouldClose(window))
     {
-        // Cor de fundo do framebuffer
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        float curr_time = (float)glfwGetTime();
+        if (curr_time - last_update >= delta_t){
+            last_update = curr_time;
+            // Cor de fundo do framebuffer
+            glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-        // "Pintamos" todos os pixels do framebuffer com a cor definida acima,
-        // e também resetamos todos os pixels do Z-buffer (depth buffer).
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            // "Pintamos" todos os pixels do framebuffer com a cor definida acima,
+            // e também resetamos todos os pixels do Z-buffer (depth buffer).
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Pedimos para a GPU utilizar o programa de GPU criado acima (contendo
-        // os shaders de vértice e fragmentos).
-        glUseProgram(program_id);
+            // Pedimos para a GPU utilizar o programa de GPU criado acima (contendo
+            // os shaders de vértice e fragmentos).
+            glUseProgram(program_id);
 
-        // Computação da posição da câmera
-        float y = sin(g_CameraPhi);
-        float x = cos(g_CameraPhi)*cos(g_CameraTheta);
-        float z = cos(g_CameraPhi)*sin(g_CameraTheta);
+            #define SPHERE  0
+            #define HAND    1
+            #define PLANE   2
+            #define TROPHY  3
 
-        // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
-        glm::vec4 camera_view_vector = glm::vec4(x, y, z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
-        glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
-        glm::vec4 v_vec = crossproduct(camera_view_vector, camera_up_vector);
-        camera_position_c  += camera_view_vector * g_CameraSpeed[0]
-                              -camera_view_vector * g_CameraSpeed[2]  
-                              - v_vec  * g_CameraSpeed[1]
-                              + v_vec  * g_CameraSpeed[3];
+            // Agora computamos a matriz de Projeção.
+            glm::mat4 projection;
 
-        // Computamos a matriz "View" utilizando os parâmetros da câmera para
-        glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
+            float nearplane = -0.1f;  // Posição do "near plane"
+            float farplane  = -10.0f; // Posição do "far plane"
 
-        // TextRendering_PrintMatrix(window, view, -1.0f, 1.0f - pad, 1.0f);
+            // Projeção perspectiva na câmera
+            float field_of_view = 3.141592 / 3.0f;
+            projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
 
-        // PrintMatrix(view);
+            if (victory){
+                // Computamos a posição da câmera utilizando coordenadas esféricas.  As
+                // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
+                // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
+                // e ScrollCallback().
+                float r = g_CameraDistance;
+                float y = r*sin(g_CameraPhi);
+                float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
+                float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
 
-        // Agora computamos a matriz de Projeção.
-        glm::mat4 projection;
+                // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
+                // Veja slides 195-227 e 229-234 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
+                glm::vec4 camera_position_c  = glm::vec4(x,y,z,1.0f); // Ponto "c", centro da câmera
+                glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+                glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
+                glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
-        float nearplane = -0.1f;  // Posição do "near plane"
-        float farplane  = -10.0f; // Posição do "far plane"
+                // Computamos a matriz "View" utilizando os parâmetros da câmera para
+                // definir o sistema de coordenadas da câmera.  Veja slides 2-14, 184-190 e 236-242 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
+                glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
+                glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
 
-        // Projeção perspectiva na câmera
-        float field_of_view = 3.141592 / 3.0f;
-        projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
+                // Enviamos as matrizes "view" e "projection" para a placa de vídeo
+                // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
+                // efetivamente aplicadas em todos os pontos.
+                glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
+                glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
+                // Desenhamos o modelo do trofeu principal
+                model = Matrix_Translate(0.0f,-1.0f,0.0f)
+                    * Matrix_Scale(0.1f, 0.1f, 0.1f)
+                    * Matrix_Rotate_X(-1.6f)
+                    * Matrix_Rotate_Z((float)glfwGetTime() * 0.2f);
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                glUniform1i(object_id_uniform, TROPHY);
+                glUniform1i(use_gouraud_shading_uniform, true);
+                DrawVirtualObject("trophy");
 
-        glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
+                // Determina o acrescimo ou decrescimo no valor de t
+                t += rising ? 0.005 : -0.005;
 
-        // Enviamos as matrizes "view" e "projection" para a placa de vídeo
-        // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
-        // efetivamente aplicadas em todos os pontos.
-        glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
-        glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
+                // Verifica se t precisa aumentar ou diminuir
+                if (t >= 1) {
+                    rising = false;
+                    t = 1;
+                } else if (t <= 0) {
+                    rising = true;
+                    t = 0;
+                }
+                
+                glm::vec4 p1 = glm::vec4(-2.0f,-1.0f,1.0f,1.0f);
+                glm::vec4 p2 = glm::vec4(-1.0f,1.0f,-1.0f,1.0f);
+                glm::vec4 p3 = glm::vec4(1.0f,1.0f,-1.0f,1.0f);
+                glm::vec4 p4 = glm::vec4(2.0f,-1.0f,1.0f,1.0f);
+                glm::vec4 tr_position = calculate_Bezier_position(p1, p2, p3, p4, t);
 
-        #define SPHERE 0
-        #define HAND  1
-        #define PLANE  2
+                model = Matrix_Translate(tr_position.x, tr_position.y, tr_position.z)
+                    * Matrix_Scale(0.05f, 0.05f, 0.05f)
+                    * Matrix_Rotate_X(-1.6f)
+                    * Matrix_Rotate_Z(1.0f);
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                glUniform1i(object_id_uniform, TROPHY);
+                glUniform1i(use_gouraud_shading_uniform, true);
+                DrawVirtualObject("trophy");
 
-        // Desenhamos o modelo da esfera
-        model = Matrix_Translate(-1.0f,0.0f,0.0f)
-              * Matrix_Rotate_Z(0.6f)
-              * Matrix_Rotate_X(0.2f)
-              * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime() * 0.1f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(object_id_uniform, SPHERE);
-        DrawVirtualObject("sphere");
+                p1 = glm::vec4(2.0f,-1.0f,-1.0f,1.0f);
+                p2 = glm::vec4(1.0f,1.0f,1.0f,1.0f);
+                p3 = glm::vec4(-1.0f,1.0f,1.0f,1.0f);
+                p4 = glm::vec4(-2.0f,-1.0f,-1.0f,1.0f);
+                tr_position = calculate_Bezier_position(p1, p2, p3, p4, t);
 
-        glm::vec4 hand_pos = camera_position_c + glm::vec4(0.3f, -0.2f, -1.0f, 0.0f);
+                model = Matrix_Translate(tr_position.x, tr_position.y, tr_position.z)
+                    * Matrix_Scale(0.05f, 0.05f, 0.05f)
+                    * Matrix_Rotate_X(-1.6f)
+                    * Matrix_Rotate_Z(-1.0f);
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                glUniform1i(object_id_uniform, TROPHY);
+                glUniform1i(use_gouraud_shading_uniform, true);
+                DrawVirtualObject("trophy");
+            } else {
+                // Computação da posição da câmera
+                float y = sin(g_CameraPhi);
+                float x = cos(g_CameraPhi)*cos(g_CameraTheta);
+                float z = cos(g_CameraPhi)*sin(g_CameraTheta);
 
-        model = model = glm::inverse(view)
-              * Matrix_Translate(0.3f, -0.3f, -1.0f)  
-              * Matrix_Scale(0.1f, 0.1f, 0.1f)
-              * Matrix_Rotate_X(1.57)
-              * Matrix_Rotate_Y(-1.37);
-        
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(object_id_uniform, HAND);
-        DrawVirtualObject("hand");
+                // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
+                glm::vec4 camera_view_vector = glm::vec4(x, y, z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
+                glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+                glm::vec4 v_vec = crossproduct(camera_view_vector, camera_up_vector);
+                camera_position_c  += camera_view_vector * g_CameraSpeed[0]
+                                    -camera_view_vector * g_CameraSpeed[2]  
+                                    - v_vec  * g_CameraSpeed[1]
+                                    + v_vec  * g_CameraSpeed[3];
 
-        // Desenhamos o plano do chão
-        model = Matrix_Translate(0.0f,-1.1f,0.0f);
-        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
+                // Computamos a matriz "View" utilizando os parâmetros da câmera para
+                glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
-        // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
-        // passamos por todos os sistemas de coordenadas armazenados nas
-        // matrizes the_model, the_view, e the_projection; e escrevemos na tela
-        // as matrizes e pontos resultantes dessas transformações.
-        // glm::vec4 p_model(0.5f, 0.5f, 0.5f, 1.0f);
-        // TextRendering_ShowModelViewProjection(window, projection, view, model, p_model);
+                // TextRendering_PrintMatrix(window, view, -1.0f, 1.0f - pad, 1.0f);
 
-        // Imprimimos na tela os ângulos de Euler que controlam a rotação do
-        // terceiro cubo.
-        TextRendering_ShowEulerAngles(window);
+                // PrintMatrix(view);
 
-        // Imprimimos na informação sobre a matriz de projeção sendo utilizada.
-        TextRendering_ShowProjection(window);
+                glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
 
-        // Imprimimos na tela informação sobre o número de quadros renderizados
-        // por segundo (frames per second).
-        TextRendering_ShowFramesPerSecond(window);
+                // Enviamos as matrizes "view" e "projection" para a placa de vídeo
+                // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
+                // efetivamente aplicadas em todos os pontos.
+                glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
+                glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
-        // O framebuffer onde OpenGL executa as operações de renderização não
-        // é o mesmo que está sendo mostrado para o usuário, caso contrário
-        // seria possível ver artefatos conhecidos como "screen tearing". A
-        // chamada abaixo faz a troca dos buffers, mostrando para o usuário
-        // tudo que foi renderizado pelas funções acima.
-        // Veja o link: Veja o link: https://en.wikipedia.org/w/index.php?title=Multiple_buffering&oldid=793452829#Double_buffering_in_computer_graphics
-        glfwSwapBuffers(window);
+                // Desenhamos o modelo da esfera
+                model = Matrix_Translate(-1.0f,0.0f,0.0f)
+                    * Matrix_Rotate_Z(0.6f)
+                    * Matrix_Rotate_X(0.2f)
+                    * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime() * 0.1f);
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                glUniform1i(object_id_uniform, SPHERE);
+                glUniform1i(use_gouraud_shading_uniform, false);
+                DrawVirtualObject("sphere");
 
-        // Verificamos com o sistema operacional se houve alguma interação do
-        // usuário (teclado, mouse, ...). Caso positivo, as funções de callback
-        // definidas anteriormente usando glfwSet*Callback() serão chamadas
-        // pela biblioteca GLFW.
-        glfwPollEvents();
+                model = glm::inverse(view)
+                    * Matrix_Translate(0.3f, -0.3f, -1.0f)  
+                    * Matrix_Scale(0.1f, 0.1f, 0.1f)
+                    * Matrix_Rotate_X(1.57)
+                    * Matrix_Rotate_Y(-1.37);
+                
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                glUniform1i(object_id_uniform, HAND);
+                glUniform1i(use_gouraud_shading_uniform, false);
+                DrawVirtualObject("hand");
+
+                // Desenhamos o plano do chão
+                model = Matrix_Translate(0.0f,-1.1f,0.0f);
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                glUniform1i(object_id_uniform, PLANE);
+                glUniform1i(use_gouraud_shading_uniform, false);
+                DrawVirtualObject("plane");
+            }
+
+            // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
+            // passamos por todos os sistemas de coordenadas armazenados nas
+            // matrizes the_model, the_view, e the_projection; e escrevemos na tela
+            // as matrizes e pontos resultantes dessas transformações.
+            // glm::vec4 p_model(0.5f, 0.5f, 0.5f, 1.0f);
+            // TextRendering_ShowModelViewProjection(window, projection, view, model, p_model);
+
+            // Imprimimos na tela os ângulos de Euler que controlam a rotação do
+            // terceiro cubo.
+            TextRendering_ShowEulerAngles(window);
+
+            // Imprimimos na informação sobre a matriz de projeção sendo utilizada.
+            TextRendering_ShowProjection(window);
+
+            // Imprimimos na tela informação sobre o número de quadros renderizados
+            // por segundo (frames per second).
+            TextRendering_ShowFramesPerSecond(window);
+
+            // O framebuffer onde OpenGL executa as operações de renderização não
+            // é o mesmo que está sendo mostrado para o usuário, caso contrário
+            // seria possível ver artefatos conhecidos como "screen tearing". A
+            // chamada abaixo faz a troca dos buffers, mostrando para o usuário
+            // tudo que foi renderizado pelas funções acima.
+            // Veja o link: Veja o link: https://en.wikipedia.org/w/index.php?title=Multiple_buffering&oldid=793452829#Double_buffering_in_computer_graphics
+            glfwSwapBuffers(window);
+
+            // Verificamos com o sistema operacional se houve alguma interação do
+            // usuário (teclado, mouse, ...). Caso positivo, as funções de callback
+            // definidas anteriormente usando glfwSet*Callback() serão chamadas
+            // pela biblioteca GLFW.
+            glfwPollEvents();
+        }
     }
 
     // Finalizamos o uso dos recursos do sistema operacional
@@ -552,6 +658,8 @@ void LoadShadersFromFiles()
     object_id_uniform       = glGetUniformLocation(program_id, "object_id"); // Variável "object_id" em shader_fragment.glsl
     bbox_min_uniform        = glGetUniformLocation(program_id, "bbox_min");
     bbox_max_uniform        = glGetUniformLocation(program_id, "bbox_max");
+
+    use_gouraud_shading_uniform = glGetUniformLocation(program_id, "use_gouraud_shading");
 
     // Variáveis em "shader_fragment.glsl" para acesso das imagens de textura
     glUseProgram(program_id);
@@ -1125,6 +1233,12 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
         g_UsePerspectiveProjection = true;
     }
 
+    // Tecla de testes, caso pressionada T, altera o estado da var victory
+    if (key == GLFW_KEY_T && action == GLFW_PRESS)
+    {
+        victory = !victory; 
+    }
+
     // Se o usuário apertar a tecla O, utilizamos projeção ortográfica.
     if (key == GLFW_KEY_O && action == GLFW_PRESS)
     {
@@ -1479,6 +1593,15 @@ void PrintObjModelInfo(ObjModel* model)
     }
     printf("\n");
   }
+}
+
+glm::vec4 calculate_Bezier_position(glm::vec4 p1, glm::vec4 p2, glm::vec4 p3, glm::vec4 p4, float t){
+    float b03 = (1 - t) * (1 - t) * (1 - t);
+    float b13 = 3 * t * (1 - t) * (1 - t);
+    float b23 = 3 * t * t * (1 - t);
+    float b33 = t * t * t;
+
+    return b03 * p1 + b13 * p2 + b23 * p3 + b33 * p4;
 }
 
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
