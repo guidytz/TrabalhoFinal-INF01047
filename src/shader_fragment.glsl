@@ -52,6 +52,9 @@ void main()
         // Caso use a interpolação de Gouraud, considerar a cor calculada no vertex shader
         color = gouraud_color;
     } else {
+        // Caso não use interpolação de Gouraud, significa que é preciso fazer as operações necessárias para a
+        // interpolação de Phong 
+
         // Obtemos a posição da câmera utilizando a inversa da matriz que define o
         // sistema de coordenadas da câmera.
         vec4 origin = vec4(0.0, 0.0, 0.0, 1.0);
@@ -69,7 +72,7 @@ void main()
         vec4 n = normalize(normal);
 
         // Vetor que define o sentido da fonte de luz em relação ao ponto atual.
-        vec4 l = normalize(vec4(1.0,1.0,0.0,0.0));
+        vec4 l = normalize(vec4(0.0,10.0,0.0,0.0) - p);
 
         // Vetor que define o sentido da câmera em relação ao ponto atual.
         vec4 v = normalize(camera_position - p);
@@ -114,7 +117,7 @@ void main()
             U = (theta + M_PI) / (2 * M_PI);
             V = (rho + M_PI_2) / M_PI;
             Ks = vec3(0.0, 0.0, 0.0);
-            Ka = vec3(0.1, 0.1, 0.1);
+            Ka = vec3(0.5, 0.5, 0.5);
             Kd = texture(TextureImage0, vec2(U,V)).rgb;
             q = 1;
         }
@@ -143,7 +146,7 @@ void main()
             V = texcoords.y;
 
             Ks = vec3(0.0, 0.0, 0.0);
-            Ka = vec3(0.1, 0.1, 0.1);
+            Ka = vec3(0.5, 0.5, 0.5);
             Kd = texture(TextureImage1, vec2(U,V)).rgb;
             q = 1;
         }

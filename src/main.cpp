@@ -345,7 +345,7 @@ int main(int argc, char* argv[])
             glm::mat4 projection;
 
             float nearplane = -0.1f;  // Posição do "near plane"
-            float farplane  = -10.0f; // Posição do "far plane"
+            float farplane  = -15.0f; // Posição do "far plane"
 
             // Projeção perspectiva na câmera
             float field_of_view = 3.141592 / 3.0f;
