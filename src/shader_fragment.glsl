@@ -24,9 +24,9 @@ uniform bool use_gouraud_shading;
 in vec3 gouraud_color;
 
 // Identificador que define qual objeto está sendo desenhado no momento
-#define SPHERE 0
+#define MAPA 0
 #define HAND  1
-#define PLANE  2
+#define CUBO  2
 #define TROPHY  3
 uniform int object_id;
 
@@ -90,7 +90,7 @@ void main()
         float q = 1; // Expoente especular para o modelo de iluminação de Blinn-Phong
 
 
-        if ( object_id == SPHERE )
+        if ( object_id == MAPA )
         {
             // PREENCHA AQUI as coordenadas de textura da esfera, computadas com
             // projeção esférica EM COORDENADAS DO MODELO. Utilize como referência
@@ -136,7 +136,7 @@ void main()
             Kd = texture(TextureImage2, vec2(U,V)).rgb;
             q = 1;
         }
-        else if ( object_id == PLANE )
+        else if ( object_id == CUBO )
         {
             // Coordenadas de textura do plano, obtidas do arquivo OBJ.
             U = texcoords.x;
@@ -144,10 +144,10 @@ void main()
 
             Ks = vec3(0.0, 0.0, 0.0);
             Ka = vec3(0.1, 0.1, 0.1);
-            Kd = texture(TextureImage0, vec2(U,V)).rgb;
+            Kd = texture(TextureImage1, vec2(U,V)).rgb;
             q = 1;
         }
-        else if ( object_id == TROPHY ) 
+        else if ( object_id == TROPHY )
         {
 
             Ks = vec3(0.8, 0.8, 0.8);
@@ -161,25 +161,25 @@ void main()
         vec3 I = vec3(1.0,1.0,1.0);
 
         // Espectro da luz ambiente
-        vec3 Ia = vec3(0.01, 0.01, 0.01); 
+        vec3 Ia = vec3(0.01, 0.01, 0.01);
 
         // Termo difuso utilizando a lei dos cossenos de Lambert
-        vec3 lambert_diffuse_term = Kd * I * max(0, dot(n, l)); 
+        vec3 lambert_diffuse_term = Kd * I * max(0, dot(n, l));
 
         // Termo ambiente
-        vec3 ambient_term = Ka * Ia; 
+        vec3 ambient_term = Ka * Ia;
 
         // Termo especular utilizando o modelo de iluminação de Phong
-        vec3 blinn_phong_specular_term  = Ks * I * pow(max(0, dot(n, h)), q); 
+        vec3 blinn_phong_specular_term  = Ks * I * pow(max(0, dot(n, h)), q);
 
         // // Equação de Iluminação
         // float lambert = max(0, dot(n,l));
 
-        color = lambert_diffuse_term + ambient_term + blinn_phong_specular_term; 
+        color = lambert_diffuse_term + ambient_term + blinn_phong_specular_term;
 
         // Cor final com correção gamma, considerando monitor sRGB.
         // Veja https://en.wikipedia.org/w/index.php?title=Gamma_correction&oldid=751281772#Windows.2C_Mac.2C_sRGB_and_TV.2Fvideo_standard_gammas
     }
     color = pow(color, vec3(1.0,1.0,1.0)/2.2);
-} 
+}
 

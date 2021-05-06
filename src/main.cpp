@@ -65,7 +65,7 @@ struct ObjModel
 
         if (!ret)
             throw std::runtime_error("Erro ao carregar modelo.");
-        
+
         printf("OK.\n");
     }
 };
@@ -134,7 +134,7 @@ struct SceneObject
 
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
 
-// Cena virtual 
+// Cena virtual
 std::map<std::string, SceneObject> g_VirtualScene;
 
 // Pilha que guardará as matrizes de modelagem.
@@ -241,8 +241,8 @@ int main(int argc, char* argv[])
     glfwSetCursorPosCallback(window, CursorPosCallback);
     // ... ou rolar a "rodinha" do mouse.
     glfwSetScrollCallback(window, ScrollCallback);
-    
-    
+
+
     glfwSetCursorPos(window, 800/2, 600/2);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 
@@ -274,12 +274,12 @@ int main(int argc, char* argv[])
     LoadShadersFromFiles();
 
     // Carregamos duas imagens para serem utilizadas como textura
-    LoadTextureImage("../../data/tc-earth_daymap_surface.jpg");      // TextureImage0
-    LoadTextureImage("../../data/tc-earth_nightmap_citylights.gif"); // TextureImage1
+    LoadTextureImage("../../data/cinza.jpg");      // TextureImage0
+    LoadTextureImage("../../data/laranja.jpg"); // TextureImage1
     LoadTextureImage("../../data/hand/textures/handtexture.jpg"); // TextureImage2
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
-    ObjModel spheremodel("../../data/sphere.obj");
+    ObjModel spheremodel("../../data/mapa.obj");
     ComputeNormals(&spheremodel);
     BuildTrianglesAndAddToVirtualScene(&spheremodel);
 
@@ -287,7 +287,7 @@ int main(int argc, char* argv[])
     ComputeNormals(&handmodel);
     BuildTrianglesAndAddToVirtualScene(&handmodel);
 
-    ObjModel planemodel("../../data/plane.obj");
+    ObjModel planemodel("../../data/cubo.obj");
     ComputeNormals(&planemodel);
     BuildTrianglesAndAddToVirtualScene(&planemodel);
 
@@ -336,9 +336,9 @@ int main(int argc, char* argv[])
             // os shaders de vértice e fragmentos).
             glUseProgram(program_id);
 
-            #define SPHERE  0
+            #define MAPA  0
             #define HAND    1
-            #define PLANE   2
+            #define CUBO   2
             #define TROPHY  3
 
             // Agora computamos a matriz de Projeção.
@@ -401,7 +401,7 @@ int main(int argc, char* argv[])
                     rising = true;
                     t = 0;
                 }
-                
+
                 glm::vec4 p1 = glm::vec4(-2.0f,-1.0f,1.0f,1.0f);
                 glm::vec4 p2 = glm::vec4(-1.0f,1.0f,-1.0f,1.0f);
                 glm::vec4 p3 = glm::vec4(1.0f,1.0f,-1.0f,1.0f);
@@ -442,7 +442,7 @@ int main(int argc, char* argv[])
                 glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
                 glm::vec4 v_vec = crossproduct(camera_view_vector, camera_up_vector);
                 camera_position_c  += camera_view_vector * g_CameraSpeed[0]
-                                    -camera_view_vector * g_CameraSpeed[2]  
+                                    -camera_view_vector * g_CameraSpeed[2]
                                     - v_vec  * g_CameraSpeed[1]
                                     + v_vec  * g_CameraSpeed[3];
 
@@ -461,33 +461,30 @@ int main(int argc, char* argv[])
                 glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
                 glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
-                // Desenhamos o modelo da esfera
-                model = Matrix_Translate(-1.0f,0.0f,0.0f)
-                    * Matrix_Rotate_Z(0.6f)
-                    * Matrix_Rotate_X(0.2f)
-                    * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime() * 0.1f);
+                // Desenhamos o modelo do mapa
+                model = Matrix_Translate(-1.0f,0.0f,0.0f);
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-                glUniform1i(object_id_uniform, SPHERE);
+                glUniform1i(object_id_uniform, MAPA);
                 glUniform1i(use_gouraud_shading_uniform, false);
-                DrawVirtualObject("sphere");
+                DrawVirtualObject("mapa");
 
+                // Desenhando a mão
                 model = glm::inverse(view)
-                    * Matrix_Translate(0.3f, -0.3f, -1.0f)  
+                    * Matrix_Translate(0.3f, -0.3f, -1.0f)
                     * Matrix_Scale(0.1f, 0.1f, 0.1f)
                     * Matrix_Rotate_X(1.57)
                     * Matrix_Rotate_Y(-1.37);
-                
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
                 glUniform1i(object_id_uniform, HAND);
                 glUniform1i(use_gouraud_shading_uniform, false);
                 DrawVirtualObject("hand");
 
-                // Desenhamos o plano do chão
-                model = Matrix_Translate(0.0f,-1.1f,0.0f);
+                // Desenhamos o plano do cubo
+                model = Matrix_Translate(2.5f, -0.3f, 3.0f);
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-                glUniform1i(object_id_uniform, PLANE);
+                glUniform1i(object_id_uniform, CUBO);
                 glUniform1i(use_gouraud_shading_uniform, false);
-                DrawVirtualObject("plane");
+                DrawVirtualObject("cubo");
             }
 
             // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
@@ -1037,7 +1034,7 @@ GLuint CreateGpuProgram(GLuint vertex_shader_id, GLuint fragment_shader_id)
         fprintf(stderr, "%s", output.c_str());
     }
 
-    // Os "Shader Objects" podem ser marcados para deleção após serem linkados 
+    // Os "Shader Objects" podem ser marcados para deleção após serem linkados
     glDeleteShader(vertex_shader_id);
     glDeleteShader(fragment_shader_id);
 
@@ -1135,24 +1132,24 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     // Assim, temos que o usuário consegue controlar a câmera.
 
         // Deslocamento do cursor do mouse em x e y de coordenadas de tela!
-        if (xpos != 800/2 || ypos != 600/2){    
+        if (xpos != 800/2 || ypos != 600/2){
             float dx = xpos - 800/2;
             float dy = 600/2 - ypos;
-        
+
             // Atualizamos parâmetros da câmera com os deslocamentos
             g_CameraTheta += 0.005f*dx;
             g_CameraPhi   += 0.005f*dy;
-        
+
             // Em coordenadas esféricas, o ângulo phi deve ficar entre -pi/2 e +pi/2.
             float phimax = M_PI_2;
             float phimin = -phimax;
-        
+
             if (g_CameraPhi > phimax)
                 g_CameraPhi = phimax;
-        
+
             if (g_CameraPhi < phimin)
                 g_CameraPhi = phimin;
-        
+
             // Atualizamos as variáveis globais para armazenar a posição atual do
             // cursor como sendo a última posição conhecida do cursor.
             g_LastCursorPosX = xpos;
@@ -1236,7 +1233,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     // Tecla de testes, caso pressionada T, altera o estado da var victory
     if (key == GLFW_KEY_T && action == GLFW_PRESS)
     {
-        victory = !victory; 
+        victory = !victory;
     }
 
     // Se o usuário apertar a tecla O, utilizamos projeção ortográfica.
@@ -1266,7 +1263,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
             g_CameraSpeed[0] = 0.0f;
         }
     }
-    
+
     if (key == GLFW_KEY_A) { // Movimento para a esquerda
         if (action == GLFW_PRESS) {
             g_CameraSpeed[1] = 0.05f;
@@ -1274,7 +1271,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
             g_CameraSpeed[1] = 0.0f;
         }
     }
-    
+
     if (key == GLFW_KEY_S) { // Movimento para tras
         if (action == GLFW_PRESS) {
             g_CameraSpeed[2] = 0.05f;
@@ -1288,7 +1285,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
             g_CameraSpeed[3] = 0.05f;
         } if(action == GLFW_RELEASE) {
             g_CameraSpeed[3] = 0.0f;
-        } 
+        }
     }
 }
 
@@ -1415,7 +1412,7 @@ void TextRendering_ShowFramesPerSecond(GLFWwindow* window)
     if ( ellapsed_seconds > 1.0f )
     {
         numchars = snprintf(buffer, 20, "%.2f fps", ellapsed_frames / ellapsed_seconds);
-    
+
         old_seconds = seconds;
         ellapsed_frames = 0;
     }
