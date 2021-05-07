@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include <iostream>
 #include <map>
 #include <stack>
 #include <string>
@@ -131,6 +132,28 @@ struct SceneObject
     glm::vec3    bbox_min; // Axis-Aligned Bounding Box do objeto
     glm::vec3    bbox_max;
 };
+
+// Definição das estruturas para uso nos testes de colisão 
+enum ObjectType 
+{
+    CUBE,
+    PLANE,
+    SPHERE
+};
+
+struct GameObject 
+{
+    std::string name;
+    ObjectType type;
+    glm::vec4 position_center;
+    glm::vec3 bbox;
+    float radius;
+};
+
+std::map<std::string, GameObject> gameObjectCollection;
+
+// Definição das funções de teste de colisão a serem usadas no código da aplicação
+bool collided(GameObject objA, std::map<std::string, GameObject> gameObjectCollection);
 
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
 
@@ -279,17 +302,17 @@ int main(int argc, char* argv[])
     LoadTextureImage("../../data/hand/textures/handtexture.jpg"); // TextureImage2
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
-    ObjModel spheremodel("../../data/mapa.obj");
-    ComputeNormals(&spheremodel);
-    BuildTrianglesAndAddToVirtualScene(&spheremodel);
+    ObjModel mapmodel("../../data/mapa.obj");
+    ComputeNormals(&mapmodel);
+    BuildTrianglesAndAddToVirtualScene(&mapmodel);
 
     ObjModel handmodel("../../data/hand/hand.obj");
     ComputeNormals(&handmodel);
     BuildTrianglesAndAddToVirtualScene(&handmodel);
 
-    ObjModel planemodel("../../data/cubo.obj");
-    ComputeNormals(&planemodel);
-    BuildTrianglesAndAddToVirtualScene(&planemodel);
+    ObjModel cubemodel("../../data/cubo.obj");
+    ComputeNormals(&cubemodel);
+    BuildTrianglesAndAddToVirtualScene(&cubemodel);
 
     ObjModel trophymodel("../../data/trophy/trophy.obj");
     ComputeNormals(&trophymodel);
@@ -317,6 +340,12 @@ int main(int argc, char* argv[])
     glm::mat4 the_projection;
     glm::mat4 the_model;
     glm::mat4 the_view;
+
+    // Definindo os planos de limite do mapa do jogo
+    gameObjectCollection["planoMapa1"] = {"planoMapa1", PLANE, glm::vec4(), glm::vec3(5.5f, 0.0f, INFINITY), 0.0f};
+    gameObjectCollection["planoMapa2"] = {"planoMapa2", PLANE, glm::vec4(), glm::vec3(-7.5f, 0.0f, INFINITY), 0.0f};
+    gameObjectCollection["planoMapa3"] = {"planoMapa3", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, 7.5f), 0.0f};
+    gameObjectCollection["planoMapa4"] = {"planoMapa4", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, -7.5f), 0.0f};
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     float last_update = (float)glfwGetTime();
@@ -441,10 +470,24 @@ int main(int argc, char* argv[])
                 glm::vec4 camera_view_vector = glm::vec4(x, y, z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
                 glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
                 glm::vec4 v_vec = crossproduct(camera_view_vector, camera_up_vector);
-                camera_position_c  += camera_view_vector * g_CameraSpeed[0]
-                                    -camera_view_vector * g_CameraSpeed[2]
-                                    - v_vec  * g_CameraSpeed[1]
-                                    + v_vec  * g_CameraSpeed[3];
+                glm::vec4 camera_new_position = camera_position_c + camera_view_vector * g_CameraSpeed[0]
+                                                                  - camera_view_vector * g_CameraSpeed[2]
+                                                                  - v_vec  * g_CameraSpeed[1]
+                                                                  + v_vec  * g_CameraSpeed[3];
+                
+                GameObject playerObj;
+                playerObj.name = "player";
+                playerObj.type = CUBE;
+                playerObj.position_center = camera_new_position;
+                playerObj.bbox = glm::vec3(2.0f, 5.0f, 3.0f);
+                playerObj.radius = 0.0f;
+
+                // glm::vec3 plane_pos = glm::vec3(5.0f, 0.0f, INFINITY);
+                if (!collided(playerObj, gameObjectCollection)) {
+                    camera_position_c = camera_new_position;
+                }
+                playerObj.position_center = camera_position_c; 
+                gameObjectCollection["player"] = playerObj;
 
                 // Computamos a matriz "View" utilizando os parâmetros da câmera para
                 glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
