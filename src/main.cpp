@@ -187,7 +187,7 @@ float g_CameraTheta = - M_PI_2; // Ângulo no plano ZX em relação ao eixo Z
 float g_newCameraTheta = g_CameraTheta;
 float g_CameraPhi = 0.0f;   // Ângulo em relação ao eixo Y
 float g_CameraSpeed[4] = {0.0f};
-glm::vec4 camera_position_c  = glm::vec4(0.0f,2.0f,3.0f,1.0f);
+glm::vec4 camera_position_c  = glm::vec4(1.0f,2.0f,4.0f,1.0f);
 
 // Variável que controla o tipo de projeção utilizada: perspectiva ou ortográfica.
 bool g_UsePerspectiveProjection = true;
@@ -347,13 +347,14 @@ int main(int argc, char* argv[])
     glm::mat4 the_view;
 
     // Definindo os planos de limite do mapa do jogo
-    gameObjectCollection["plane1"] = {"plane1", PLANE, glm::vec4(), glm::vec3(4.0f, 0.0f, INFINITY), 0.0f};
+    gameObjectCollection["plane1"] = {"plane1", PLANE, glm::vec4(), glm::vec3(4.0f, 0.0f, INFINITY) , 0.0f};
     gameObjectCollection["plane2"] = {"plane2", PLANE, glm::vec4(), glm::vec3(-6.0f, 0.0f, INFINITY), 0.0f};
-    gameObjectCollection["plane3"] = {"plane3", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, 5.0f), 0.0f};
+    gameObjectCollection["plane3"] = {"plane3", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, 5.0f) , 0.0f};
     gameObjectCollection["plane4"] = {"plane4", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, -5.0f), 0.0f};
 
     // Definindo as paredes internas do mapa
-    gameObjectCollection["wall1"] = {"wall1", CUBE, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f), glm::vec3(1.0f, 5.0f, 5.0f), 0.0f};
+    gameObjectCollection["wall1"] = {"wall1", CUBE, glm::vec4(-1.5f, 0.0f, 0.0f, 1.0f), glm::vec3(0.5f, 5.0f, 2.4f), 0.0f};
+    gameObjectCollection["wall2"] = {"wall2", CUBE, glm::vec4(-1.0f, 0.0f, -0.5f, 1.0f), glm::vec3(2.4f, 5.0f, 0.5f), 0.0f};
 
 
     // Definindo as posições iniciais dos cubos
@@ -538,13 +539,13 @@ int main(int argc, char* argv[])
                 glUniform1i(object_id_uniform, HAND);
                 glUniform1i(use_gouraud_shading_uniform, false);
                 DrawVirtualObject("hand");
-                glm::vec4 p_model(1.0f, -2.0f, 0.0f, 1.0f);
+                glm::vec4 p_model(1.0f, -1.5f, 0.0f, 1.0f);
                 glm::vec4 hand_position = model * p_model;
                 // TextRendering_ShowModelViewProjection(window, projection, view, model, hand_position);
                 // float pad = TextRendering_LineHeight(window);
                 // TextRendering_PrintVector(window, hand_position, -1.0f, 1.0f -2*pad);
-                GameObject handObj = {"hand", SPHERE, hand_position, glm::vec3(), 1.0f};
-                // gameObjectCollection["hand"] = handObj;
+                GameObject handObj = {"hand", SPHERE, hand_position, glm::vec3(), 0.7f};
+                gameObjectCollection["hand"] = handObj;
 
 
                 GameObject playerObj;
@@ -566,11 +567,14 @@ int main(int argc, char* argv[])
                             move_direction.z = 0.0f;
                         } else if (objName.find("cube") != std::string::npos) {
                             // std::cout << objName << std::endl;
+                        } else if (objName.find("wall") != std::string::npos) {
+                            move_direction.x = move_direction.z = 0.0f;
+                            // glm::vec4 wall_direction = gameObjectCollection[objName].position_center - playerObj.position_center;
+                            // wall_direction = wall_direction / norm(wall_direction);
                         }
                     }
                     camera_position_c = camera_position_c + move_direction;
                 }
-                playerObj.position_center = camera_position_c; 
                 // gameObjectCollection["player"] = playerObj;
 
                 collided_with = collided(handObj, gameObjectCollection);
@@ -586,6 +590,10 @@ int main(int argc, char* argv[])
                             } else {
                                 for (auto& name : cube_collided) {
                                     std::cout << name << std::endl;
+                                    if (name.compare("hand") != 0) {
+                                       camera_position_c = camera_position_c - move_direction;
+                                        break;
+                                    }
                                 }
                             }
                             cubeObj.position_center = cube_pos[cube_idx];
@@ -593,6 +601,7 @@ int main(int argc, char* argv[])
                         }
                     }
                 }
+                playerObj.position_center = camera_position_c; 
             }
 
             // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
