@@ -68,14 +68,7 @@ bool checkCubeSphereCollision(GameObject objA, GameObject sphere) {
     float z = fmax(AzMin, fmin(AzMax, sphere.position_center.z));
 
     glm::vec4 closest_point = glm::vec4(x, y, z, 1.0f);
-
-    float dist_to_center = sqrt((x - sphere.position_center.x) * (x - sphere.position_center.x) +
-                                (y - sphere.position_center.y) * (y - sphere.position_center.y) +
-                                (z - sphere.position_center.z) * (z - sphere.position_center.z));
-    float other = glm::distance(closest_point, sphere.position_center);
-    std::cout << "dist: " << dist_to_center << std::endl;
-    std::cout << "other: " << other << std::endl;
-
+    float dist_to_center = glm::distance(closest_point, sphere.position_center);
     return dist_to_center < sphere.radius;
 }
 
@@ -89,11 +82,18 @@ std::vector<std::string> collided(GameObject objA, std::map<std::string, GameObj
             } else if (objA.type != objB.second.type) {
                 if (objA.type == CUBE && objB.second.type == PLANE) {
                     collision = checkCubePlaneCollision(objA, objB.second);
+                } else if (objA.type == SPHERE && objB.second.type == CUBE) {
+                    // Desconsiderando colisão entre mão e player
+                    if (objA.name == "hand" && objB.second.name == "player") { 
+                        collision = false;
+                    } else {
+                        collision = checkCubeSphereCollision(objB.second, objA);
+                    }
                 } else if (objA.type == CUBE && objB.second.type == SPHERE) {
                     // Desconsiderando colisão entre mão e player
                     if (objA.name == "player" && objB.second.name == "hand") { 
                         collision = false;
-                    } else {
+                    } else  {
                         collision = checkCubeSphereCollision(objA, objB.second);
                     }
                 }
