@@ -20,6 +20,6 @@
 #### Funcionalidades adicionadas
  * Renderização do mapa e uma caixa
  * Fixação vertical do personagem
- * Colisões do player com as paredes do mapa (precisa de algumas melhorias)
- * Colisão da mão com a caixa para que possa ser empurrada (ainda precisa ajustar a bounding sphere da mão)
+ * Colisões do player com as paredes do mapa 
+ * Colisão da mão com a caixa para que possa ser empurrada
  * Colisão da caixa com as paredes do mapa
