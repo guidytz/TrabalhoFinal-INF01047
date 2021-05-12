@@ -10,12 +10,23 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 
+#include "utils.h"
+#include "matrices.h"
+
 // Definição das estruturas para uso nos testes de colisão 
 enum ObjectType 
 {
     CUBE,
     PLANE,
     SPHERE
+};
+
+enum XZDirection {
+    WEST,
+    EAST,
+    NORTH,
+    SOUTH,
+    NONE
 };
 
 struct GameObject 
@@ -42,11 +53,11 @@ bool checkCubePlaneCollision(GameObject objA, GameObject plane) {
 
 bool checkCubeCubeCollision(GameObject objA, GameObject objB) {
     // Checa se há intersecção no eixo x
-    if (abs(objA.position_center.x - objB.position_center.x) < objA.bbox.x + objB.bbox.x) {
+    if (std::abs(objA.position_center.x - objB.position_center.x) < objA.bbox.x + objB.bbox.x) {
         // Checa se há intersecção no eixo z
-        if (abs(objA.position_center.z - objB.position_center.z) < objA.bbox.z + objB.bbox.z) {
+        if (std::abs(objA.position_center.z - objB.position_center.z) < objA.bbox.z + objB.bbox.z) {
             // Checa se há intersecção no eixo y
-            if (abs(objA.position_center.y - objB.position_center.y) < objA.bbox.y + objB.bbox.y) {
+            if (std::abs(objA.position_center.y - objB.position_center.y) < objA.bbox.y + objB.bbox.y) {
                 return true;
             }
         }
@@ -54,7 +65,7 @@ bool checkCubeCubeCollision(GameObject objA, GameObject objB) {
     return false;
 }
 
-bool checkCubeSphereCollision(GameObject objA, GameObject sphere) {
+glm::vec4 getClosestPointToCenter(GameObject objA, GameObject objB) {
     float AxMin = objA.position_center.x - objA.bbox.x;
     float AyMin = objA.position_center.y - objA.bbox.y;
     float AzMin = objA.position_center.z - objA.bbox.z;
@@ -63,11 +74,15 @@ bool checkCubeSphereCollision(GameObject objA, GameObject sphere) {
     float AyMax = objA.position_center.y + objA.bbox.y;
     float AzMax = objA.position_center.z + objA.bbox.z;
 
-    float x = fmax(AxMin, fmin(AxMax, sphere.position_center.x));
-    float y = fmax(AyMin, fmin(AyMax, sphere.position_center.y));
-    float z = fmax(AzMin, fmin(AzMax, sphere.position_center.z));
+    float x = fmax(AxMin, fmin(AxMax, objB.position_center.x));
+    float y = fmax(AyMin, fmin(AyMax, objB.position_center.y));
+    float z = fmax(AzMin, fmin(AzMax, objB.position_center.z));
 
-    glm::vec4 closest_point = glm::vec4(x, y, z, 1.0f);
+    return glm::vec4(x, y, z, 1.0f);
+}
+
+bool checkCubeSphereCollision(GameObject objA, GameObject sphere) {
+    glm::vec4 closest_point = getClosestPointToCenter(objA, sphere);
     float dist_to_center = glm::distance(closest_point, sphere.position_center);
     return dist_to_center < sphere.radius;
 }
@@ -105,3 +120,32 @@ std::vector<std::string> collided(GameObject objA, std::map<std::string, GameObj
     }
     return collided_with;
 } 
+
+XZDirection closest_direction(glm::vec4 dir_vec) {
+    dir_vec = dir_vec / norm(dir_vec);
+    // dir_vec.w = 0.0f;
+    glm::vec4 compass[] = {
+        glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+        glm::vec4(-1.0f, 0.0f, 0.0f, 0.0f),
+        glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
+        glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)
+    };
+    XZDirection best_direction = NONE;
+    float maximum = 0.0f;
+    for (int i = 0; i < 4; i++) {
+        float dot_prod = dotproduct(dir_vec, compass[i]);
+        if (dot_prod > maximum) {
+            maximum = dot_prod;
+            if (i == 0) {
+                best_direction = EAST;
+            } else if (i == 1) {
+                best_direction = WEST;
+            } else if (i == 2) {
+                best_direction = SOUTH;
+            } else {
+                best_direction = NORTH;
+            }
+        }
+    }
+    return best_direction;
+}
