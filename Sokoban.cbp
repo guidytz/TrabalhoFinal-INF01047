@@ -101,6 +101,7 @@
 		<Unit filename="include/GLFW/glfw3.h" />
 		<Unit filename="include/GLFW/glfw3native.h" />
 		<Unit filename="include/KHR/khrplatform.h" />
+		<Unit filename="include/collisions.h" />
 		<Unit filename="include/dejavufont.h" />
 		<Unit filename="include/glad/glad.h" />
 		<Unit filename="include/glm/CMakeLists.txt" />
