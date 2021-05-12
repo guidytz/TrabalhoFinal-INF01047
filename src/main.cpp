@@ -141,6 +141,14 @@ enum ObjectType
     SPHERE
 };
 
+enum XZDirection {
+    WEST,
+    EAST,
+    NORTH,
+    SOUTH,
+    NONE
+};
+
 struct GameObject 
 {
     std::string name;
@@ -154,6 +162,9 @@ std::map<std::string, GameObject> gameObjectCollection;
 
 // Definição das funções de teste de colisão a serem usadas no código da aplicação
 std::vector<std::string> collided(GameObject objA, std::map<std::string, GameObject> gameObjectCollection);
+bool checkCubeSphereCollision(GameObject objA, GameObject sphere);
+XZDirection closest_direction(glm::vec4 dir_vec);
+glm::vec4 getClosestPointToCenter(GameObject objA, GameObject objB);
 
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
 
@@ -183,9 +194,10 @@ bool g_MiddleMouseButtonPressed = false; // Análogo para botão do meio do mous
 // renderização.
 float g_CameraDistance = 3.5f; // Distância da câmera para a origem
 float g_CameraTheta = - M_PI_2; // Ângulo no plano ZX em relação ao eixo Z
+float g_newCameraTheta = g_CameraTheta;
 float g_CameraPhi = 0.0f;   // Ângulo em relação ao eixo Y
 float g_CameraSpeed[4] = {0.0f};
-glm::vec4 camera_position_c  = glm::vec4(0.0f,0.0f,3.0f,1.0f);
+glm::vec4 camera_position_c  = glm::vec4(1.0f,2.0f,4.0f,1.0f);
 
 // Variável que controla o tipo de projeção utilizada: perspectiva ou ortográfica.
 bool g_UsePerspectiveProjection = true;
@@ -217,6 +229,9 @@ bool rising = true;
 
 // Variável que determina um instante de tempo da aplicação
 float delta_t = 0.001f;
+
+// Posições iniciais dos cubos renderizados
+glm::vec4 cube_pos[4];
 
 int main(int argc, char* argv[])
 {
@@ -342,10 +357,19 @@ int main(int argc, char* argv[])
     glm::mat4 the_view;
 
     // Definindo os planos de limite do mapa do jogo
-    gameObjectCollection["plane1"] = {"plane1", PLANE, glm::vec4(), glm::vec3(5.5f, 0.0f, INFINITY), 0.0f};
-    gameObjectCollection["plane2"] = {"plane2", PLANE, glm::vec4(), glm::vec3(-7.5f, 0.0f, INFINITY), 0.0f};
-    gameObjectCollection["plane3"] = {"plane3", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, 7.5f), 0.0f};
-    gameObjectCollection["plane4"] = {"plane4", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, -7.5f), 0.0f};
+    gameObjectCollection["plane1"] = {"plane1", PLANE, glm::vec4(), glm::vec3(4.0f, 0.0f, INFINITY) , 0.0f};
+    gameObjectCollection["plane2"] = {"plane2", PLANE, glm::vec4(), glm::vec3(-6.0f, 0.0f, INFINITY), 0.0f};
+    gameObjectCollection["plane3"] = {"plane3", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, 5.0f) , 0.0f};
+    gameObjectCollection["plane4"] = {"plane4", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, -5.0f), 0.0f};
+
+    // Definindo as paredes internas do mapa
+    gameObjectCollection["wall1"] = {"wall1", CUBE, glm::vec4(-1.5f, 0.0f, 0.0f, 1.0f), glm::vec3(0.5f, 5.0f, 3.0f), 0.0f};
+    gameObjectCollection["wall2"] = {"wall2", CUBE, glm::vec4(-1.0f, 0.0f, -0.5f, 1.0f), glm::vec3(3.0f, 5.0f, 0.5f), 0.0f};
+
+
+    // Definindo as posições iniciais dos cubos
+    cube_pos[0] = glm::vec4(2.5f, -0.3f, 3.0f, 1.0f);
+    cube_pos[1] = glm::vec4(0.5f, -0.3f, 2.0f, 1.0f);
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     float last_update = (float)glfwGetTime();
@@ -474,6 +498,9 @@ int main(int argc, char* argv[])
                                                                   - camera_view_vector * g_CameraSpeed[2]
                                                                   - v_vec  * g_CameraSpeed[1]
                                                                   + v_vec  * g_CameraSpeed[3];
+                glm::vec4 move_direction = camera_new_position - camera_position_c;
+                move_direction.y = 0.0f;
+                camera_new_position = camera_position_c + move_direction;
 
                 // Computamos a matriz "View" utilizando os parâmetros da câmera para
                 glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
@@ -497,8 +524,22 @@ int main(int argc, char* argv[])
                 glUniform1i(use_gouraud_shading_uniform, false);
                 DrawVirtualObject("mapa");
 
+                // Desenhamos o  cubo
+                model = Matrix_Translate(cube_pos[0].x, cube_pos[0].y, cube_pos[0].z);
+                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                glUniform1i(object_id_uniform, CUBO);
+                glUniform1i(use_gouraud_shading_uniform, false);
+                DrawVirtualObject("cubo");
+                gameObjectCollection["cube0"] = {"cube0", CUBE, cube_pos[0], glm::vec3(0.5f, 0.5f, 0.5f), 0.0f};
+
+                // model = Matrix_Translate(cube_pos[1].x, cube_pos[1].y, cube_pos[1].z);
+                // glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                // glUniform1i(object_id_uniform, CUBO);
+                // glUniform1i(use_gouraud_shading_uniform, false);
+                // DrawVirtualObject("cubo");
+                // gameObjectCollection["cube1"] = {"cube1", CUBE, cube_pos[1], glm::vec3(0.5f, 0.5f, 0.5f), 0.0f};
+
                 // Desenhando a mão
-                glm::vec4 hand_position = camera_position_c + glm::vec4(0.3f, -0.3f, -1.0f, 0.0f);
                 model = glm::inverse(view)
                     * Matrix_Translate(0.3f, -0.3f, -1.0f)
                     * Matrix_Scale(0.1f, 0.1f, 0.1f)
@@ -508,40 +549,84 @@ int main(int argc, char* argv[])
                 glUniform1i(object_id_uniform, HAND);
                 glUniform1i(use_gouraud_shading_uniform, false);
                 DrawVirtualObject("hand");
-                GameObject handObj = {"hand", SPHERE, hand_position, glm::vec3(), 3.0f};
+                glm::vec4 p_model(1.0f, -1.5f, 0.0f, 1.0f);
+                glm::vec4 hand_position = model * p_model;
+                // TextRendering_ShowModelViewProjection(window, projection, view, model, hand_position);
+                // float pad = TextRendering_LineHeight(window);
+                // TextRendering_PrintVector(window, hand_position, -1.0f, 1.0f -2*pad);
+                GameObject handObj = {"hand", SPHERE, hand_position, glm::vec3(), 0.7f};
                 gameObjectCollection["hand"] = handObj;
 
-                // Desenhamos o plano do cubo
-                model = Matrix_Translate(2.5f, -0.3f, 3.0f);
-                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-                glUniform1i(object_id_uniform, CUBO);
-                glUniform1i(use_gouraud_shading_uniform, false);
-                DrawVirtualObject("cubo");
 
                 GameObject playerObj;
                 playerObj.name = "player";
                 playerObj.type = CUBE;
                 playerObj.position_center = camera_new_position;
-                playerObj.bbox = glm::vec3(2.0f, 5.0f, 3.0f);
+                playerObj.bbox = glm::vec3(0.5f, 2.0f, 0.5f);
                 playerObj.radius = 0.0f;
-
-                // testa colisão para atualizar posição da câmera
+                float pad = TextRendering_LineHeight(window);
+                            TextRendering_PrintVector(window, move_direction, -1.0f, 1.0f -2*pad);
+                // Testa colisão do player para atualizar posição da câmera
                 std::vector<std::string> collided_with = collided(playerObj, gameObjectCollection);
                 if (collided_with.empty()) {
                     camera_position_c = camera_new_position;
                 } else  {
-                    glm::vec4 move_direction = camera_new_position - camera_position_c;
                     for (std::string objName : collided_with) {
                         if (objName.compare("plane1") == 0 || objName.compare("plane2") == 0){
                             move_direction.x = 0.0f;
                         } else if (objName.compare("plane3") == 0 || objName.compare("plane4") == 0){
                             move_direction.z = 0.0f;
-                        } 
+                        } else if (objName.find("cube") != std::string::npos) {
+                            glm::vec4 closest_cube_point = getClosestPointToCenter(gameObjectCollection[objName], playerObj);
+                            glm::vec4 wall_dir = closest_cube_point - playerObj.position_center;
+                            XZDirection direction = closest_direction(wall_dir);
+                            if (direction == WEST || direction == EAST) {
+                                move_direction.x = 0;
+                            } else if (direction == NORTH || direction == SOUTH) {
+                                move_direction.z = 0.0f;
+                            } else  {
+                                move_direction.x = move_direction.z = 0.0f;
+                            }
+                        } else if (objName.find("wall") != std::string::npos) {  
+                            glm::vec4 closest_wall_point = getClosestPointToCenter(gameObjectCollection[objName], playerObj);
+                            glm::vec4 wall_dir = closest_wall_point - playerObj.position_center;
+                            XZDirection direction = closest_direction(wall_dir);
+                            if (direction == WEST || direction == EAST) {
+                                move_direction.x = 0;
+                            } else if (direction == NORTH || direction == SOUTH) {
+                                move_direction.z = 0.0f;
+                            } else  {
+                                move_direction.x = move_direction.z = 0.0f;
+                            }
+                        }
                     }
                     camera_position_c = camera_position_c + move_direction;
                 }
+
+                collided_with = collided(handObj, gameObjectCollection);
+                if (!collided_with.empty()) {
+                    for (std::string objName : collided_with) {
+                        if (objName.find("cube") != std::string::npos) {
+                            int cube_idx = objName[4] - '0';
+                            glm::vec4 cube_new_pos = cube_pos[cube_idx] + move_direction;
+                            GameObject cubeObj = {objName, CUBE, cube_new_pos, gameObjectCollection[objName].bbox, 0.0f};
+                            std::vector<std::string> cube_collided = collided(cubeObj, gameObjectCollection);
+                            if (cube_collided.empty()) {
+                                cube_pos[cube_idx] = cube_new_pos;
+                            } else {
+                                for (auto& name : cube_collided) {
+                                    if (name.compare("hand") != 0) {
+                                        camera_position_c = camera_position_c - move_direction;
+                                        break;
+                                    }
+                                }
+                            }
+                            cubeObj.position_center = cube_pos[cube_idx];
+                            gameObjectCollection[objName] = cubeObj;
+                        }
+                    }
+                }
                 playerObj.position_center = camera_position_c; 
-                gameObjectCollection["player"] = playerObj;
             }
 
             // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
@@ -1195,7 +1280,7 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
 
             // Atualizamos parâmetros da câmera com os deslocamentos
             g_CameraTheta += 0.005f*dx;
-            g_CameraPhi   += 0.005f*dy;
+            g_CameraPhi      += 0.005f*dy;
 
             // Em coordenadas esféricas, o ângulo phi deve ficar entre -pi/2 e +pi/2.
             float phimax = M_PI_2;
