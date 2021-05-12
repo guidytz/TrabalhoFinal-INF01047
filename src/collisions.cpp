@@ -12,32 +12,7 @@
 
 #include "utils.h"
 #include "matrices.h"
-
-// Definição das estruturas para uso nos testes de colisão 
-enum ObjectType 
-{
-    CUBE,
-    PLANE,
-    SPHERE
-};
-
-enum XZDirection {
-    WEST,
-    EAST,
-    NORTH,
-    SOUTH,
-    NONE
-};
-
-struct GameObject 
-{
-    std::string name;
-    ObjectType type;
-    glm::vec4 position_center;
-    glm::vec3 bbox;
-    float radius;
-};
-
+#include "collisions.h"
 
 // Considerando que os planos de colisão só acontecem nos eixos x e z
 bool checkCubePlaneCollision(GameObject objA, GameObject plane) {

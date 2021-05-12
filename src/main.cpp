@@ -42,6 +42,7 @@
 // Headers locais, definidos na pasta "include/"
 #include "utils.h"
 #include "matrices.h"
+#include "collisions.h"
 
 
 // Estrutura que representa um modelo geométrico carregado a partir de um
@@ -133,43 +134,6 @@ struct SceneObject
     glm::vec3    bbox_max;
 };
 
-// Definição das estruturas para uso nos testes de colisão 
-enum ObjectType 
-{
-    CUBE,
-    PLANE,
-    SPHERE
-};
-
-enum XZDirection {
-    WEST,
-    EAST,
-    NORTH,
-    SOUTH,
-    NONE
-};
-
-struct GameObject 
-{
-    std::string name;
-    ObjectType type;
-    glm::vec4 position_center;
-    glm::vec3 bbox;
-    float radius;
-};
-
-std::map<std::string, GameObject> gameObjectCollection;
-
-// Definição das funções de teste de colisão a serem usadas no código da aplicação
-std::vector<std::string> collided(GameObject objA, std::map<std::string, GameObject> gameObjectCollection);
-bool checkCubeSphereCollision(GameObject objA, GameObject sphere);
-XZDirection closest_direction(glm::vec4 dir_vec);
-glm::vec4 getClosestPointToCenter(GameObject objA, GameObject objB);
-glm::vec4 updateMovementDirection(GameObject movingObj, 
-                                  std::string collidedName,
-                                  glm::vec4 move_direction,
-                                  std::map<std::string, GameObject> gameObjectCollection);
-
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
 
 // Cena virtual
@@ -177,6 +141,9 @@ std::map<std::string, SceneObject> g_VirtualScene;
 
 // Pilha que guardará as matrizes de modelagem.
 std::stack<glm::mat4>  g_MatrixStack;
+
+// Objetos do jogo (serve para testes de colisão)
+std::map<std::string, GameObject> gameObjectCollection;
 
 // Razão de proporção da janela (largura/altura). Veja função FramebufferSizeCallback().
 float g_ScreenRatio = 1.0f;
