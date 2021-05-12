@@ -141,6 +141,14 @@ enum ObjectType
     SPHERE
 };
 
+enum XZDirection {
+    WEST,
+    EAST,
+    NORTH,
+    SOUTH,
+    NONE
+};
+
 struct GameObject 
 {
     std::string name;
@@ -155,6 +163,8 @@ std::map<std::string, GameObject> gameObjectCollection;
 // Definição das funções de teste de colisão a serem usadas no código da aplicação
 std::vector<std::string> collided(GameObject objA, std::map<std::string, GameObject> gameObjectCollection);
 bool checkCubeSphereCollision(GameObject objA, GameObject sphere);
+XZDirection closest_direction(glm::vec4 dir_vec);
+glm::vec4 getClosestPointToCenter(GameObject objA, GameObject objB);
 
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
 
@@ -353,8 +363,8 @@ int main(int argc, char* argv[])
     gameObjectCollection["plane4"] = {"plane4", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, -5.0f), 0.0f};
 
     // Definindo as paredes internas do mapa
-    gameObjectCollection["wall1"] = {"wall1", CUBE, glm::vec4(-1.5f, 0.0f, 0.0f, 1.0f), glm::vec3(0.5f, 5.0f, 2.4f), 0.0f};
-    gameObjectCollection["wall2"] = {"wall2", CUBE, glm::vec4(-1.0f, 0.0f, -0.5f, 1.0f), glm::vec3(2.4f, 5.0f, 0.5f), 0.0f};
+    gameObjectCollection["wall1"] = {"wall1", CUBE, glm::vec4(-1.5f, 0.0f, 0.0f, 1.0f), glm::vec3(0.5f, 5.0f, 3.0f), 0.0f};
+    gameObjectCollection["wall2"] = {"wall2", CUBE, glm::vec4(-1.0f, 0.0f, -0.5f, 1.0f), glm::vec3(3.0f, 5.0f, 0.5f), 0.0f};
 
 
     // Definindo as posições iniciais dos cubos
@@ -554,7 +564,8 @@ int main(int argc, char* argv[])
                 playerObj.position_center = camera_new_position;
                 playerObj.bbox = glm::vec3(0.5f, 2.0f, 0.5f);
                 playerObj.radius = 0.0f;
-
+                float pad = TextRendering_LineHeight(window);
+                            TextRendering_PrintVector(window, move_direction, -1.0f, 1.0f -2*pad);
                 // Testa colisão do player para atualizar posição da câmera
                 std::vector<std::string> collided_with = collided(playerObj, gameObjectCollection);
                 if (collided_with.empty()) {
@@ -566,16 +577,31 @@ int main(int argc, char* argv[])
                         } else if (objName.compare("plane3") == 0 || objName.compare("plane4") == 0){
                             move_direction.z = 0.0f;
                         } else if (objName.find("cube") != std::string::npos) {
-                            // std::cout << objName << std::endl;
-                        } else if (objName.find("wall") != std::string::npos) {
-                            move_direction.x = move_direction.z = 0.0f;
-                            // glm::vec4 wall_direction = gameObjectCollection[objName].position_center - playerObj.position_center;
-                            // wall_direction = wall_direction / norm(wall_direction);
+                            glm::vec4 closest_cube_point = getClosestPointToCenter(gameObjectCollection[objName], playerObj);
+                            glm::vec4 wall_dir = closest_cube_point - playerObj.position_center;
+                            XZDirection direction = closest_direction(wall_dir);
+                            if (direction == WEST || direction == EAST) {
+                                move_direction.x = 0;
+                            } else if (direction == NORTH || direction == SOUTH) {
+                                move_direction.z = 0.0f;
+                            } else  {
+                                move_direction.x = move_direction.z = 0.0f;
+                            }
+                        } else if (objName.find("wall") != std::string::npos) {  
+                            glm::vec4 closest_wall_point = getClosestPointToCenter(gameObjectCollection[objName], playerObj);
+                            glm::vec4 wall_dir = closest_wall_point - playerObj.position_center;
+                            XZDirection direction = closest_direction(wall_dir);
+                            if (direction == WEST || direction == EAST) {
+                                move_direction.x = 0;
+                            } else if (direction == NORTH || direction == SOUTH) {
+                                move_direction.z = 0.0f;
+                            } else  {
+                                move_direction.x = move_direction.z = 0.0f;
+                            }
                         }
                     }
                     camera_position_c = camera_position_c + move_direction;
                 }
-                // gameObjectCollection["player"] = playerObj;
 
                 collided_with = collided(handObj, gameObjectCollection);
                 if (!collided_with.empty()) {
@@ -589,9 +615,8 @@ int main(int argc, char* argv[])
                                 cube_pos[cube_idx] = cube_new_pos;
                             } else {
                                 for (auto& name : cube_collided) {
-                                    std::cout << name << std::endl;
                                     if (name.compare("hand") != 0) {
-                                       camera_position_c = camera_position_c - move_direction;
+                                        camera_position_c = camera_position_c - move_direction;
                                         break;
                                     }
                                 }
