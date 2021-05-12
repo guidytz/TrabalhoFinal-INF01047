@@ -576,25 +576,25 @@ int main(int argc, char* argv[])
                             move_direction.x = 0.0f;
                         } else if (objName.compare("plane3") == 0 || objName.compare("plane4") == 0){
                             move_direction.z = 0.0f;
-                        } else if (objName.find("cube") != std::string::npos) {
+                        } else if (objName.find("cube") != std::string::npos ||
+                                    objName.find("wall") != std::string::npos) {
                             glm::vec4 closest_cube_point = getClosestPointToCenter(gameObjectCollection[objName], playerObj);
-                            glm::vec4 wall_dir = closest_cube_point - playerObj.position_center;
-                            XZDirection direction = closest_direction(wall_dir);
+                            glm::vec4 cube_dir = closest_cube_point - playerObj.position_center;
+                            XZDirection direction = closest_direction(cube_dir);
                             if (direction == WEST || direction == EAST) {
-                                move_direction.x = 0;
+                                glm::vec4 x_dir(move_direction.x, 0.0f, 0.0f, 0.0f);
+                                x_dir *= 100;
+                                XZDirection movement_dir = closest_direction(x_dir);
+                                if (direction == movement_dir) {
+                                    move_direction.x = 0;
+                                }
                             } else if (direction == NORTH || direction == SOUTH) {
-                                move_direction.z = 0.0f;
-                            } else  {
-                                move_direction.x = move_direction.z = 0.0f;
-                            }
-                        } else if (objName.find("wall") != std::string::npos) {  
-                            glm::vec4 closest_wall_point = getClosestPointToCenter(gameObjectCollection[objName], playerObj);
-                            glm::vec4 wall_dir = closest_wall_point - playerObj.position_center;
-                            XZDirection direction = closest_direction(wall_dir);
-                            if (direction == WEST || direction == EAST) {
-                                move_direction.x = 0;
-                            } else if (direction == NORTH || direction == SOUTH) {
-                                move_direction.z = 0.0f;
+                                glm::vec4 z_dir(0.0f, 0.0f, move_direction.z, 0.0f);
+                                z_dir *= 100;
+                                XZDirection movement_dir = closest_direction(z_dir);
+                                if (movement_dir == direction) {
+                                    move_direction.z = 0.0f;
+                                }
                             } else  {
                                 move_direction.x = move_direction.z = 0.0f;
                             }
