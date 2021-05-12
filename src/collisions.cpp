@@ -41,10 +41,10 @@ struct GameObject
 
 // Considerando que os planos de colisão só acontecem nos eixos x e z
 bool checkCubePlaneCollision(GameObject objA, GameObject plane) {
-    if (plane.bbox.z == INFINITY) {
+    if (plane.bbox.z == INFINITY) { // testa colisão com os planos perpendiculares ao eixo x
         if (plane.bbox.x > 0 && (objA.position_center.x + objA.bbox.x) > plane.bbox.x) return true;
         if (plane.bbox.x < 0 && (objA.position_center.x - objA.bbox.x) < plane.bbox.x) return true;
-    } else if (plane.bbox.x == INFINITY) {
+    } else if (plane.bbox.x == INFINITY) { // testa colisão com os planos perpendiculares ao eixo z
         if (plane.bbox.z > 0 && (objA.position_center.z + objA.bbox.z) > plane.bbox.z) return true;
         if (plane.bbox.z < 0 && (objA.position_center.z - objA.bbox.z) < plane.bbox.z) return true;
     }
@@ -123,7 +123,6 @@ std::vector<std::string> collided(GameObject objA, std::map<std::string, GameObj
 
 XZDirection closest_direction(glm::vec4 dir_vec) {
     dir_vec = dir_vec / norm(dir_vec);
-    // dir_vec.w = 0.0f;
     glm::vec4 compass[] = {
         glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
         glm::vec4(-1.0f, 0.0f, 0.0f, 0.0f),
@@ -149,3 +148,47 @@ XZDirection closest_direction(glm::vec4 dir_vec) {
     }
     return best_direction;
 }
+
+glm::vec4 updateMovementDirection(GameObject movingObj, 
+                                  std::string collidedName,
+                                  glm::vec4 move_direction,
+                                  std::map<std::string, GameObject> gameObjectCollection) 
+{
+    if (movingObj.name.compare(collidedName) == 0) return move_direction;
+    if (collidedName.compare("planeEast") == 0 || collidedName.compare("planeWest") == 0){
+        // caso tenha colidido com os planos leste ou oeste, desconsiderar movimento no eixo x
+        move_direction.x = 0.0f;
+    } else if (collidedName.compare("planeNorth") == 0 || collidedName.compare("planeSouth") == 0){
+        // caso tenha colidido com os planos norte ou sul, desconsiderar movimento no eixo z
+        move_direction.z = 0.0f;
+    } else if (collidedName.find("cube") != std::string::npos ||
+                collidedName.find("wall") != std::string::npos) {
+        glm::vec4 closest_cube_point = getClosestPointToCenter(gameObjectCollection[collidedName], movingObj);
+        glm::vec4 cube_dir = closest_cube_point - movingObj.position_center;
+        XZDirection direction = closest_direction(cube_dir);
+        if (direction == WEST || direction == EAST) { // Caso a colisão tenha acontecido na direção do eixo x
+            glm::vec4 x_dir(move_direction.x, 0.0f, 0.0f, 0.0f);
+            x_dir *= 100; // necessário por conta do valor pequeno no vetor de direção
+            if (norm(x_dir) == 0.0f) return move_direction;// movimento nessa direção já é zero!
+
+            XZDirection movement_dir = closest_direction(x_dir);
+            // Testa se a direção do deslocamento no eixo x é a mesma do objeto colidido
+            if (direction == movement_dir) {
+                move_direction.x = 0;
+            }
+        } else if (direction == NORTH || direction == SOUTH) { // Caso a colisão tenha acontecido na direção do eixo z
+            glm::vec4 z_dir(0.0f, 0.0f, move_direction.z, 0.0f);
+            z_dir *= 100; // necessário por conta do valor pequeno no vetor de direção
+            if (norm(z_dir) == 0.0f) return move_direction; // movimento nessa direção já é zero!
+
+            XZDirection movement_dir = closest_direction(z_dir);
+            // Testa se a direção do deslocamento no eixo z é a mesma do objeto colidido
+            if (movement_dir == direction) {
+                move_direction.z = 0.0f;
+            }
+        } else  {
+            move_direction.x = move_direction.z = 0.0f;
+        }
+    }
+    return move_direction;
+} 

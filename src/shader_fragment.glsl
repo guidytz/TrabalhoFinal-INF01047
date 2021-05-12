@@ -24,9 +24,9 @@ uniform bool use_gouraud_shading;
 in vec3 gouraud_color;
 
 // Identificador que define qual objeto está sendo desenhado no momento
-#define MAPA 0
-#define HAND  1
-#define CUBO  2
+#define MAPA    0
+#define HAND    1
+#define CUBO    2
 #define TROPHY  3
 uniform int object_id;
 
@@ -159,7 +159,14 @@ void main()
             q = 80.0;
             h = l = v;
         }
-
+        else if ( object_id == SPHERE )
+        {
+            Ks = vec3(0.8, 0.8, 0.8);
+            Ka = vec3(0.1, 0.1, 0.1);
+            Kd = vec3(0.54, 0.45, 0.0);
+            q = 80.0;
+            h = l = v;
+        }
         // Espectro da fonte de iluminação
         vec3 I = vec3(1.0,1.0,1.0);
 
