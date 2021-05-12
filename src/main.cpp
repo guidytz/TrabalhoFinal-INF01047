@@ -338,13 +338,13 @@ int main(int argc, char* argv[])
     // Definindo as posições iniciais dos cubos
     resetGame();
 
-    // Ficamos em loop, renderizando, até que o usuário feche a janela
+    // Controle de tempo da aplicação
     double last_update = glfwGetTime();
     double delta_time = 0, curr_time = 0;
 
+    // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
     {
-
         curr_time = glfwGetTime();
         delta_time += (curr_time - last_update) / limitFPS;
         last_update = curr_time;
@@ -584,26 +584,26 @@ int main(int argc, char* argv[])
                 camera_position_c = camera_new_position;
                 playerObj.position_center = camera_position_c; 
             }
-
-            // Imprimimos na tela informação sobre o número de quadros renderizados
-            // por segundo (frames per second).
-            TextRendering_ShowFramesPerSecond(window);
-
-            // O framebuffer onde OpenGL executa as operações de renderização não
-            // é o mesmo que está sendo mostrado para o usuário, caso contrário
-            // seria possível ver artefatos conhecidos como "screen tearing". A
-            // chamada abaixo faz a troca dos buffers, mostrando para o usuário
-            // tudo que foi renderizado pelas funções acima.
-            // Veja o link: Veja o link: https://en.wikipedia.org/w/index.php?title=Multiple_buffering&oldid=793452829#Double_buffering_in_computer_graphics
-            glfwSwapBuffers(window);
-
-            // Verificamos com o sistema operacional se houve alguma interação do
-            // usuário (teclado, mouse, ...). Caso positivo, as funções de callback
-            // definidas anteriormente usando glfwSet*Callback() serão chamadas
-            // pela biblioteca GLFW.
-            glfwPollEvents();
             delta_time--;
         }
+
+        // Imprimimos na tela informação sobre o número de quadros renderizados
+        // por segundo (frames per second).
+        TextRendering_ShowFramesPerSecond(window);
+
+        // O framebuffer onde OpenGL executa as operações de renderização não
+        // é o mesmo que está sendo mostrado para o usuário, caso contrário
+        // seria possível ver artefatos conhecidos como "screen tearing". A
+        // chamada abaixo faz a troca dos buffers, mostrando para o usuário
+        // tudo que foi renderizado pelas funções acima.
+        // Veja o link: Veja o link: https://en.wikipedia.org/w/index.php?title=Multiple_buffering&oldid=793452829#Double_buffering_in_computer_graphics
+        glfwSwapBuffers(window);
+
+        // Verificamos com o sistema operacional se houve alguma interação do
+        // usuário (teclado, mouse, ...). Caso positivo, as funções de callback
+        // definidas anteriormente usando glfwSet*Callback() serão chamadas
+        // pela biblioteca GLFW.
+        glfwPollEvents();
     }
 
     // Finalizamos o uso dos recursos do sistema operacional
