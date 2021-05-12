@@ -119,6 +119,9 @@ void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 // Calcula a posicao de um ponto usando uma curva de Bezier cubica
 glm::vec4 calculate_Bezier_position(glm::vec4 p1, glm::vec4 p2, glm::vec4 p3, glm::vec4 p4, float t);
 
+// Reseta os parâmetros iniciais do jogo
+void resetGame();
+
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
 struct SceneObject
@@ -146,11 +149,6 @@ std::map<std::string, GameObject> gameObjectCollection;
 // Razão de proporção da janela (largura/altura). Veja função FramebufferSizeCallback().
 float g_ScreenRatio = 1.0f;
 
-// Ângulos de Euler que controlam a rotação de um dos cubos da cena virtual
-float g_AngleX = 0.0f;
-float g_AngleY = 0.0f;
-float g_AngleZ = 0.0f;
-
 // "g_LeftMouseButtonPressed = true" se o usuário está com o botão esquerdo do mouse
 // pressionado no momento atual. Veja função MouseButtonCallback().
 bool g_LeftMouseButtonPressed = false;
@@ -163,7 +161,6 @@ bool g_MiddleMouseButtonPressed = false; // Análogo para botão do meio do mous
 // renderização.
 float g_CameraDistance = 3.5f; // Distância da câmera para a origem
 float g_CameraTheta = - M_PI_2; // Ângulo no plano ZX em relação ao eixo Z
-float g_newCameraTheta = g_CameraTheta;
 float g_CameraPhi = 0.0f;   // Ângulo em relação ao eixo Y
 float g_CameraSpeed[4] = {0.0f};
 glm::vec4 camera_position_c  = glm::vec4(1.0f,2.0f,4.0f,1.0f);
@@ -334,8 +331,7 @@ int main(int argc, char* argv[])
 
 
     // Definindo as posições iniciais dos cubos
-    cube_pos[0] = glm::vec4(2.5f, -0.3f, 3.0f, 1.0f);
-    cube_pos[1] = glm::vec4(0.5f, -0.3f, 2.0f, 1.0f);
+    resetGame();
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     float last_update = (float)glfwGetTime();
@@ -1275,6 +1271,8 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     if (key == GLFW_KEY_T && action == GLFW_PRESS)
     {
         victory = !victory;
+        g_CameraTheta = - M_PI_2; // Ângulo no plano ZX em relação ao eixo Z
+        g_CameraPhi = 0.0f;   // Ângulo em relação ao eixo Y
     }
 
     // Se o usuário apertar a tecla H, fazemos um "toggle" do texto informativo mostrado na tela.
@@ -1286,9 +1284,10 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     // Se o usuário apertar a tecla R, recarregamos os shaders dos arquivos "shader_fragment.glsl" e "shader_vertex.glsl".
     if (key == GLFW_KEY_R && action == GLFW_PRESS)
     {
-        LoadShadersFromFiles();
-        fprintf(stdout,"Shaders recarregados!\n");
-        fflush(stdout);
+        resetGame();
+        // LoadShadersFromFiles();
+        // fprintf(stdout,"Shaders recarregados!\n");
+        // fflush(stdout);
     }
 
      if (key == GLFW_KEY_W){ // Movimento para frente
@@ -1597,6 +1596,7 @@ void PrintObjModelInfo(ObjModel* model)
   }
 }
 
+// Função que calcula a posição na curve de Bezier de acordo com os pontos de controle e o parâmetro t
 glm::vec4 calculate_Bezier_position(glm::vec4 p1, glm::vec4 p2, glm::vec4 p3, glm::vec4 p4, float t){
     float b03 = (1 - t) * (1 - t) * (1 - t);
     float b13 = 3 * t * (1 - t) * (1 - t);
@@ -1604,6 +1604,29 @@ glm::vec4 calculate_Bezier_position(glm::vec4 p1, glm::vec4 p2, glm::vec4 p3, gl
     float b33 = t * t * t;
 
     return b03 * p1 + b13 * p2 + b23 * p3 + b33 * p4;
+}
+
+// Função que reseta os parâmetros do jogo
+void resetGame() {
+    // Reseta os valores referentes à câmera
+    g_CameraTheta = - M_PI_2; // Ângulo no plano ZX em relação ao eixo Z
+    g_CameraPhi = 0.0f;   // Ângulo em relação ao eixo Y
+    g_CameraSpeed[0] = 0.0f;
+    g_CameraSpeed[1] = 0.0f;
+    g_CameraSpeed[2] = 0.0f;
+    g_CameraSpeed[3] = 0.0f;
+    camera_position_c  = glm::vec4(1.0f,2.0f,4.0f,1.0f);
+
+    // Seta a flag de jogo completo como falsa
+    victory = false;
+
+    // Reposiciona os cubos na posição inicial
+    cube_pos[0] = glm::vec4(2.5f, -0.3f, 3.0f, 1.0f);
+    cube_pos[1] = glm::vec4(0.5f, -0.3f, 2.0f, 1.0f);
+
+    // Reseta os parâmetros para as curvas de bezier dos troféus
+    t = 0.0f;
+    rising = true;
 }
 
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
