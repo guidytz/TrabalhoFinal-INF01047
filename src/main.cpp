@@ -42,6 +42,7 @@
 // Headers locais, definidos na pasta "include/"
 #include "utils.h"
 #include "matrices.h"
+#include "collisions.h"
 
 
 // Estrutura que representa um modelo geométrico carregado a partir de um
@@ -104,8 +105,6 @@ void TextRendering_PrintMatrixVectorProductDivW(GLFWwindow* window, glm::mat4 M,
 // Funções abaixo renderizam como texto na janela OpenGL algumas matrizes e
 // outras informações do programa. Definidas após main().
 void TextRendering_ShowModelViewProjection(GLFWwindow* window, glm::mat4 projection, glm::mat4 view, glm::mat4 model, glm::vec4 p_model);
-void TextRendering_ShowEulerAngles(GLFWwindow* window);
-void TextRendering_ShowProjection(GLFWwindow* window);
 void TextRendering_ShowFramesPerSecond(GLFWwindow* window);
 
 // Funções callback para comunicação com o sistema operacional e interação do
@@ -133,39 +132,6 @@ struct SceneObject
     glm::vec3    bbox_max;
 };
 
-// Definição das estruturas para uso nos testes de colisão 
-enum ObjectType 
-{
-    CUBE,
-    PLANE,
-    SPHERE
-};
-
-enum XZDirection {
-    WEST,
-    EAST,
-    NORTH,
-    SOUTH,
-    NONE
-};
-
-struct GameObject 
-{
-    std::string name;
-    ObjectType type;
-    glm::vec4 position_center;
-    glm::vec3 bbox;
-    float radius;
-};
-
-std::map<std::string, GameObject> gameObjectCollection;
-
-// Definição das funções de teste de colisão a serem usadas no código da aplicação
-std::vector<std::string> collided(GameObject objA, std::map<std::string, GameObject> gameObjectCollection);
-bool checkCubeSphereCollision(GameObject objA, GameObject sphere);
-XZDirection closest_direction(glm::vec4 dir_vec);
-glm::vec4 getClosestPointToCenter(GameObject objA, GameObject objB);
-
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
 
 // Cena virtual
@@ -173,6 +139,9 @@ std::map<std::string, SceneObject> g_VirtualScene;
 
 // Pilha que guardará as matrizes de modelagem.
 std::stack<glm::mat4>  g_MatrixStack;
+
+// Objetos do jogo (serve para testes de colisão)
+std::map<std::string, GameObject> gameObjectCollection;
 
 // Razão de proporção da janela (largura/altura). Veja função FramebufferSizeCallback().
 float g_ScreenRatio = 1.0f;
@@ -198,9 +167,6 @@ float g_newCameraTheta = g_CameraTheta;
 float g_CameraPhi = 0.0f;   // Ângulo em relação ao eixo Y
 float g_CameraSpeed[4] = {0.0f};
 glm::vec4 camera_position_c  = glm::vec4(1.0f,2.0f,4.0f,1.0f);
-
-// Variável que controla o tipo de projeção utilizada: perspectiva ou ortográfica.
-bool g_UsePerspectiveProjection = true;
 
 // Variável que controla se o texto informativo será mostrado na tela.
 bool g_ShowInfoText = true;
@@ -357,10 +323,10 @@ int main(int argc, char* argv[])
     glm::mat4 the_view;
 
     // Definindo os planos de limite do mapa do jogo
-    gameObjectCollection["plane1"] = {"plane1", PLANE, glm::vec4(), glm::vec3(4.0f, 0.0f, INFINITY) , 0.0f};
-    gameObjectCollection["plane2"] = {"plane2", PLANE, glm::vec4(), glm::vec3(-6.0f, 0.0f, INFINITY), 0.0f};
-    gameObjectCollection["plane3"] = {"plane3", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, 5.0f) , 0.0f};
-    gameObjectCollection["plane4"] = {"plane4", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, -5.0f), 0.0f};
+    gameObjectCollection["planeEast"] = {"planeEast", PLANE, glm::vec4(), glm::vec3(4.0f, 0.0f, INFINITY) , 0.0f};
+    gameObjectCollection["planeWest"] = {"planeWest", PLANE, glm::vec4(), glm::vec3(-6.0f, 0.0f, INFINITY), 0.0f};
+    gameObjectCollection["planeNorth"] = {"planeNorth", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, 5.0f) , 0.0f};
+    gameObjectCollection["planeSouth"] = {"planeSouth", PLANE, glm::vec4(), glm::vec3(INFINITY, 0.0f, -5.0f), 0.0f};
 
     // Definindo as paredes internas do mapa
     gameObjectCollection["wall1"] = {"wall1", CUBE, glm::vec4(-1.5f, 0.0f, 0.0f, 1.0f), glm::vec3(0.5f, 5.0f, 3.0f), 0.0f};
@@ -389,9 +355,9 @@ int main(int argc, char* argv[])
             // os shaders de vértice e fragmentos).
             glUseProgram(program_id);
 
-            #define MAPA  0
+            #define MAPA    0
             #define HAND    1
-            #define CUBO   2
+            #define CUBO    2
             #define TROPHY  3
 
             // Agora computamos a matriz de Projeção.
@@ -493,14 +459,15 @@ int main(int argc, char* argv[])
                 // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
                 glm::vec4 camera_view_vector = glm::vec4(x, y, z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
                 glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
-                glm::vec4 v_vec = crossproduct(camera_view_vector, camera_up_vector);
-                glm::vec4 camera_new_position = camera_position_c + camera_view_vector * g_CameraSpeed[0]
-                                                                  - camera_view_vector * g_CameraSpeed[2]
-                                                                  - v_vec  * g_CameraSpeed[1]
-                                                                  + v_vec  * g_CameraSpeed[3];
+                glm::vec4 front_vec = camera_view_vector;
+                front_vec.y = 0.0f;
+                front_vec = front_vec / norm(front_vec);
+                glm::vec4 side_vec = crossproduct(front_vec, camera_up_vector);
+                glm::vec4 camera_new_position = camera_position_c + front_vec * g_CameraSpeed[0]
+                                                                  - front_vec * g_CameraSpeed[2]
+                                                                  - side_vec  * g_CameraSpeed[1]
+                                                                  + side_vec  * g_CameraSpeed[3];
                 glm::vec4 move_direction = camera_new_position - camera_position_c;
-                move_direction.y = 0.0f;
-                camera_new_position = camera_position_c + move_direction;
 
                 // Computamos a matriz "View" utilizando os parâmetros da câmera para
                 glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
@@ -530,7 +497,9 @@ int main(int argc, char* argv[])
                 glUniform1i(object_id_uniform, CUBO);
                 glUniform1i(use_gouraud_shading_uniform, false);
                 DrawVirtualObject("cubo");
-                gameObjectCollection["cube0"] = {"cube0", CUBE, cube_pos[0], glm::vec3(0.5f, 0.5f, 0.5f), 0.0f};
+                glm::vec3 cube_bbox = glm::abs(g_VirtualScene["cubo"].bbox_min) + glm::abs(g_VirtualScene["cubo"].bbox_max);
+                cube_bbox /= 2;
+                gameObjectCollection["cube0"] = {"cube0", CUBE, cube_pos[0], cube_bbox, 0.0f};
 
                 // model = Matrix_Translate(cube_pos[1].x, cube_pos[1].y, cube_pos[1].z);
                 // glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
@@ -549,99 +518,67 @@ int main(int argc, char* argv[])
                 glUniform1i(object_id_uniform, HAND);
                 glUniform1i(use_gouraud_shading_uniform, false);
                 DrawVirtualObject("hand");
-                glm::vec4 p_model(1.0f, -1.5f, 0.0f, 1.0f);
-                glm::vec4 hand_position = model * p_model;
-                // TextRendering_ShowModelViewProjection(window, projection, view, model, hand_position);
-                // float pad = TextRendering_LineHeight(window);
-                // TextRendering_PrintVector(window, hand_position, -1.0f, 1.0f -2*pad);
-                GameObject handObj = {"hand", SPHERE, hand_position, glm::vec3(), 0.7f};
+                glm::vec4 hand_displacement(1.0f, -1.5f, 0.0f, 1.0f);
+                glm::vec4 hand_position = model * hand_displacement;
+                GameObject handObj = {"hand", SPHERE, hand_position, glm::vec3(), 0.4f};
                 gameObjectCollection["hand"] = handObj;
 
-
+                // Cria um objeto do jogo do player para fazer testes de colisão
                 GameObject playerObj;
                 playerObj.name = "player";
                 playerObj.type = CUBE;
                 playerObj.position_center = camera_new_position;
                 playerObj.bbox = glm::vec3(0.5f, 2.0f, 0.5f);
                 playerObj.radius = 0.0f;
-                float pad = TextRendering_LineHeight(window);
-                            TextRendering_PrintVector(window, move_direction, -1.0f, 1.0f -2*pad);
-                // Testa colisão do player para atualizar posição da câmera
+
+                // Testa colisão do player para atualizar posição do player
                 std::vector<std::string> collided_with = collided(playerObj, gameObjectCollection);
                 if (collided_with.empty()) {
                     camera_position_c = camera_new_position;
                 } else  {
                     for (std::string objName : collided_with) {
-                        if (objName.compare("plane1") == 0 || objName.compare("plane2") == 0){
-                            move_direction.x = 0.0f;
-                        } else if (objName.compare("plane3") == 0 || objName.compare("plane4") == 0){
-                            move_direction.z = 0.0f;
-                        } else if (objName.find("cube") != std::string::npos ||
-                                    objName.find("wall") != std::string::npos) {
-                            glm::vec4 closest_cube_point = getClosestPointToCenter(gameObjectCollection[objName], playerObj);
-                            glm::vec4 cube_dir = closest_cube_point - playerObj.position_center;
-                            XZDirection direction = closest_direction(cube_dir);
-                            if (direction == WEST || direction == EAST) {
-                                glm::vec4 x_dir(move_direction.x, 0.0f, 0.0f, 0.0f);
-                                x_dir *= 100;
-                                XZDirection movement_dir = closest_direction(x_dir);
-                                if (direction == movement_dir) {
-                                    move_direction.x = 0;
-                                }
-                            } else if (direction == NORTH || direction == SOUTH) {
-                                glm::vec4 z_dir(0.0f, 0.0f, move_direction.z, 0.0f);
-                                z_dir *= 100;
-                                XZDirection movement_dir = closest_direction(z_dir);
-                                if (movement_dir == direction) {
-                                    move_direction.z = 0.0f;
-                                }
-                            } else  {
-                                move_direction.x = move_direction.z = 0.0f;
-                            }
-                        }
+                        // Atualiza direção do movimento de acordo com a direção do objeto colidido
+                        move_direction = updateMovementDirection(playerObj, objName, move_direction, gameObjectCollection);
                     }
-                    camera_position_c = camera_position_c + move_direction;
+                    // Atualiza a posição da câmera pela direção do deslocamento
+                    camera_new_position = camera_position_c + move_direction;
                 }
 
+                // Teste de colisões da mão
                 collided_with = collided(handObj, gameObjectCollection);
                 if (!collided_with.empty()) {
                     for (std::string objName : collided_with) {
+                        // Caso a mão tenha colidido com um cubo, é preciso atualizar a possição do cubo caso possível
                         if (objName.find("cube") != std::string::npos) {
                             int cube_idx = objName[4] - '0';
                             glm::vec4 cube_new_pos = cube_pos[cube_idx] + move_direction;
                             GameObject cubeObj = {objName, CUBE, cube_new_pos, gameObjectCollection[objName].bbox, 0.0f};
                             std::vector<std::string> cube_collided = collided(cubeObj, gameObjectCollection);
                             if (cube_collided.empty()) {
+                                // Atualiza a posição do cubo caso não tenha colidido com nada
                                 cube_pos[cube_idx] = cube_new_pos;
                             } else {
                                 for (auto& name : cube_collided) {
                                     if (name.compare("hand") != 0) {
-                                        camera_position_c = camera_position_c - move_direction;
+                                        // Caso o cubo tenha colidido com algum objeto além da mão, é nessário atualizar a direção do movimento
+                                        move_direction = updateMovementDirection(cubeObj, objName, move_direction, gameObjectCollection);
+                                        camera_new_position = camera_position_c + move_direction;
                                         break;
                                     }
                                 }
                             }
+
+                            // Atualiza posição do cubo nos objetos da cena
                             cubeObj.position_center = cube_pos[cube_idx];
                             gameObjectCollection[objName] = cubeObj;
                         }
                     }
                 }
+
+                // Atualiza posição do player de acordo com o movimento computado após testes de colisão
+                camera_position_c = camera_new_position;
                 playerObj.position_center = camera_position_c; 
             }
-
-            // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
-            // passamos por todos os sistemas de coordenadas armazenados nas
-            // matrizes the_model, the_view, e the_projection; e escrevemos na tela
-            // as matrizes e pontos resultantes dessas transformações.
-            // glm::vec4 p_model(0.5f, 0.5f, 0.5f, 1.0f);
-            // TextRendering_ShowModelViewProjection(window, projection, view, model, p_model);
-
-            // Imprimimos na tela os ângulos de Euler que controlam a rotação do
-            // terceiro cubo.
-            TextRendering_ShowEulerAngles(window);
-
-            // Imprimimos na informação sobre a matriz de projeção sendo utilizada.
-            TextRendering_ShowProjection(window);
 
             // Imprimimos na tela informação sobre o número de quadros renderizados
             // por segundo (frames per second).
@@ -1334,54 +1271,10 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
 
-    // O código abaixo implementa a seguinte lógica:
-    //   Se apertar tecla X       então g_AngleX += delta;
-    //   Se apertar tecla shift+X então g_AngleX -= delta;
-    //   Se apertar tecla Y       então g_AngleY += delta;
-    //   Se apertar tecla shift+Y então g_AngleY -= delta;
-    //   Se apertar tecla Z       então g_AngleZ += delta;
-    //   Se apertar tecla shift+Z então g_AngleZ -= delta;
-
-    float delta = 3.141592 / 16; // 22.5 graus, em radianos.
-
-    if (key == GLFW_KEY_X && action == GLFW_PRESS)
-    {
-        g_AngleX += (mod & GLFW_MOD_SHIFT) ? -delta : delta;
-    }
-
-    if (key == GLFW_KEY_Y && action == GLFW_PRESS)
-    {
-        g_AngleY += (mod & GLFW_MOD_SHIFT) ? -delta : delta;
-    }
-    if (key == GLFW_KEY_Z && action == GLFW_PRESS)
-    {
-        g_AngleZ += (mod & GLFW_MOD_SHIFT) ? -delta : delta;
-    }
-
-    // Se o usuário apertar a tecla espaço, resetamos os ângulos de Euler para zero.
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
-    {
-        g_AngleX = 0.0f;
-        g_AngleY = 0.0f;
-        g_AngleZ = 0.0f;
-    }
-
-    // Se o usuário apertar a tecla P, utilizamos projeção perspectiva.
-    if (key == GLFW_KEY_P && action == GLFW_PRESS)
-    {
-        g_UsePerspectiveProjection = true;
-    }
-
     // Tecla de testes, caso pressionada T, altera o estado da var victory
     if (key == GLFW_KEY_T && action == GLFW_PRESS)
     {
         victory = !victory;
-    }
-
-    // Se o usuário apertar a tecla O, utilizamos projeção ortográfica.
-    if (key == GLFW_KEY_O && action == GLFW_PRESS)
-    {
-        g_UsePerspectiveProjection = false;
     }
 
     // Se o usuário apertar a tecla H, fazemos um "toggle" do texto informativo mostrado na tela.
@@ -1497,36 +1390,6 @@ void TextRendering_ShowModelViewProjection(
 
     TextRendering_PrintString(window, " Viewport matrix           NDC      In Pixel Coords.", -1.0f, 1.0f-25*pad, 1.0f);
     TextRendering_PrintMatrixVectorProductMoreDigits(window, viewport_mapping, p_ndc, -1.0f, 1.0f-26*pad, 1.0f);
-}
-
-// Escrevemos na tela os ângulos de Euler definidos nas variáveis globais
-// g_AngleX, g_AngleY, e g_AngleZ.
-void TextRendering_ShowEulerAngles(GLFWwindow* window)
-{
-    if ( !g_ShowInfoText )
-        return;
-
-    float pad = TextRendering_LineHeight(window);
-
-    char buffer[80];
-    snprintf(buffer, 80, "Euler Angles rotation matrix = Z(%.2f)*Y(%.2f)*X(%.2f)\n", g_AngleZ, g_AngleY, g_AngleX);
-
-    TextRendering_PrintString(window, buffer, -1.0f+pad/10, -1.0f+2*pad/10, 1.0f);
-}
-
-// Escrevemos na tela qual matriz de projeção está sendo utilizada.
-void TextRendering_ShowProjection(GLFWwindow* window)
-{
-    if ( !g_ShowInfoText )
-        return;
-
-    float lineheight = TextRendering_LineHeight(window);
-    float charwidth = TextRendering_CharWidth(window);
-
-    if ( g_UsePerspectiveProjection )
-        TextRendering_PrintString(window, "Perspective", 1.0f-13*charwidth, -1.0f+2*lineheight/10, 1.0f);
-    else
-        TextRendering_PrintString(window, "Orthographic", 1.0f-13*charwidth, -1.0f+2*lineheight/10, 1.0f);
 }
 
 // Escrevemos na tela o número de quadros renderizados por segundo (frames per
