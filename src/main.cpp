@@ -191,7 +191,12 @@ float t = 0.0f;
 bool rising = true;
 
 // Variável que determina um instante de tempo da aplicação
-float delta_t = 0.001f;
+float delta_t = 0.01f;
+static double limitFPS = 1.0f / 75.0f;
+
+// Tamanho da tela
+#define SCREEN_WIDTH    1024
+#define SCREEN_HEIGHT   768
 
 // Posições iniciais dos cubos renderizados
 glm::vec4 cube_pos[4];
@@ -222,10 +227,10 @@ int main(int argc, char* argv[])
     // funções modernas de OpenGL.
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Criamos uma janela do sistema operacional, com 800 colunas e 600 linhas
+    // Criamos uma janela do sistema operacional, com SCREEN_WIDTH colunas e SCREEN_HEIGHT linhas
     // de pixels, e com título "INF01047 ...".
     GLFWwindow* window;
-    window = glfwCreateWindow(800, 600, "INF01047 - Seu Cartao - Seu Nome", NULL, NULL);
+    window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "INF01047 - Trabalho Final - Sokoban", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -244,7 +249,7 @@ int main(int argc, char* argv[])
     glfwSetScrollCallback(window, ScrollCallback);
 
 
-    glfwSetCursorPos(window, 800/2, 600/2);
+    glfwSetCursorPos(window, SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 
 
@@ -259,7 +264,7 @@ int main(int argc, char* argv[])
     // redimensionada, por consequência alterando o tamanho do "framebuffer"
     // (região de memória onde são armazenados os pixels da imagem).
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
-    FramebufferSizeCallback(window, 800, 600); // Forçamos a chamada do callback acima, para definir g_ScreenRatio.
+    FramebufferSizeCallback(window, SCREEN_WIDTH, SCREEN_HEIGHT); // Forçamos a chamada do callback acima, para definir g_ScreenRatio.
 
     // Imprimimos no terminal informações sobre a GPU do sistema
     const GLubyte *vendor      = glGetString(GL_VENDOR);
@@ -334,12 +339,16 @@ int main(int argc, char* argv[])
     resetGame();
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
-    float last_update = (float)glfwGetTime();
+    double last_update = glfwGetTime();
+    double delta_time = 0, curr_time = 0;
+
     while (!glfwWindowShouldClose(window))
     {
-        float curr_time = (float)glfwGetTime();
-        if (curr_time - last_update >= delta_t){
-            last_update = curr_time;
+
+        curr_time = glfwGetTime();
+        delta_time += (curr_time - last_update) / limitFPS;
+        last_update = curr_time;
+        if (delta_time >= 1.0) {
             // Cor de fundo do framebuffer
             glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -593,6 +602,7 @@ int main(int argc, char* argv[])
             // definidas anteriormente usando glfwSet*Callback() serão chamadas
             // pela biblioteca GLFW.
             glfwPollEvents();
+            delta_time--;
         }
     }
 
@@ -1207,9 +1217,9 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     // Assim, temos que o usuário consegue controlar a câmera.
 
         // Deslocamento do cursor do mouse em x e y de coordenadas de tela!
-        if (xpos != 800/2 || ypos != 600/2){
-            float dx = xpos - 800/2;
-            float dy = 600/2 - ypos;
+        if (xpos != SCREEN_WIDTH/2 || ypos != SCREEN_HEIGHT/2){
+            float dx = xpos - SCREEN_WIDTH/2;
+            float dy = SCREEN_HEIGHT/2 - ypos;
 
             // Atualizamos parâmetros da câmera com os deslocamentos
             g_CameraTheta += 0.005f*dx;
@@ -1230,7 +1240,7 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
             g_LastCursorPosX = xpos;
             g_LastCursorPosY = ypos;
 
-            glfwSetCursorPos(window, 800/2, 600/2);
+            glfwSetCursorPos(window, SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
         }
 }
 
