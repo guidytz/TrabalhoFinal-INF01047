@@ -520,7 +520,7 @@ int main(int argc, char* argv[])
                 glUniform1i(object_id_uniform, HAND);
                 glUniform1i(use_gouraud_shading_uniform, false);
                 DrawVirtualObject("hand");
-                glm::vec4 hand_displacement(0.3f, -1.5f, 0.0f, 1.0f);
+                glm::vec4 hand_displacement(0.3f, -2.5f, 0.0f, 1.0f);
                 glm::vec4 hand_position = model * hand_displacement;
                 GameObject handObj = {"hand", SPHERE, hand_position, glm::vec3(), 0.4f};
                 gameObjectCollection["hand"] = handObj;
