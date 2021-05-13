@@ -49,9 +49,9 @@ glm::vec4 getClosestPointToCenter(GameObject objA, GameObject objB) {
     float AyMax = objA.position_center.y + objA.bbox.y;
     float AzMax = objA.position_center.z + objA.bbox.z;
 
-    float x = fmax(AxMin, fmin(AxMax, objB.position_center.x));
-    float y = fmax(AyMin, fmin(AyMax, objB.position_center.y));
-    float z = fmax(AzMin, fmin(AzMax, objB.position_center.z));
+    float x = std::fmax(AxMin, std::fmin(AxMax, objB.position_center.x));
+    float y = std::fmax(AyMin, std::fmin(AyMax, objB.position_center.y));
+    float z = std::fmax(AzMin, std::fmin(AzMax, objB.position_center.z));
 
     return glm::vec4(x, y, z, 1.0f);
 }
@@ -64,8 +64,8 @@ bool checkCubeSphereCollision(GameObject objA, GameObject sphere) {
 
 std::vector<std::string> collided(GameObject objA, std::map<std::string, GameObject> gameObjectCollection) {
     std::vector<std::string> collided_with;
-    bool collision = false;
     for (auto& objB : gameObjectCollection) {
+        bool collision = false;
         if (objA.name != objB.first) {
             if (objA.type == objB.second.type && objA.type == CUBE) {
                 collision = checkCubeCubeCollision(objA, objB.second);
@@ -88,15 +88,19 @@ std::vector<std::string> collided(GameObject objA, std::map<std::string, GameObj
                     }
                 }
             }
-            if (collision) {
-                collided_with.push_back(objB.second.name);
-            }
+        }
+        if (collision) {
+            collided_with.push_back(objB.second.name);
         }
     }
     return collided_with;
 } 
 
 XZDirection closest_direction(glm::vec4 dir_vec) {
+    // Caso o vetor seja nulo, não é possível calcular a direção principal
+    // Além disso, não faz sentido calculcular direção de um ponto
+    if (norm(dir_vec) == 0.0f || dir_vec.w != 0.0f) return NONE;
+
     dir_vec = dir_vec / norm(dir_vec);
     glm::vec4 compass[] = {
         glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
@@ -129,7 +133,9 @@ glm::vec4 updateMovementDirection(GameObject movingObj,
                                   glm::vec4 move_direction,
                                   std::map<std::string, GameObject> gameObjectCollection) 
 {
+    // Caso o objeto colidido seja ele mesmo, não continuar computação
     if (movingObj.name.compare(collidedName) == 0) return move_direction;
+
     if (collidedName.compare("planeEast") == 0 || collidedName.compare("planeWest") == 0){
         // caso tenha colidido com os planos leste ou oeste, desconsiderar movimento no eixo x
         move_direction.x = 0.0f;
@@ -161,9 +167,7 @@ glm::vec4 updateMovementDirection(GameObject movingObj,
             if (movement_dir == direction) {
                 move_direction.z = 0.0f;
             }
-        } else  {
-            move_direction.x = move_direction.z = 0.0f;
-        }
+        } 
     }
     return move_direction;
 } 

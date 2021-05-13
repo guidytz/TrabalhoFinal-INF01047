@@ -29,7 +29,6 @@ struct GameObject
 
 // Definição das funções de teste de colisão a serem usadas no código da aplicação
 std::vector<std::string> collided(GameObject objA, std::map<std::string, GameObject> gameObjectCollection);
-bool checkCubeSphereCollision(GameObject objA, GameObject sphere);
 XZDirection closest_direction(glm::vec4 dir_vec);
 glm::vec4 getClosestPointToCenter(GameObject objA, GameObject objB);
 glm::vec4 updateMovementDirection(GameObject movingObj, 

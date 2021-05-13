@@ -198,6 +198,12 @@ static double limitFPS = 1.0f / 75.0f;
 #define SCREEN_WIDTH    1024
 #define SCREEN_HEIGHT   768
 
+// Definições dos tipos de objetos de cena
+#define MAPA    0
+#define HAND    1
+#define CUBO    2
+#define TROPHY  3
+
 // Posições iniciais dos cubos renderizados
 glm::vec4 cube_pos[4];
 int cubos_in_corner[4];
@@ -361,11 +367,6 @@ int main(int argc, char* argv[])
             // os shaders de vértice e fragmentos).
             glUseProgram(program_id);
 
-            #define MAPA    0
-            #define HAND    1
-            #define CUBO    2
-            #define TROPHY  3
-
             // Agora computamos a matriz de Projeção.
             glm::mat4 projection;
 
@@ -519,7 +520,7 @@ int main(int argc, char* argv[])
                 glUniform1i(object_id_uniform, HAND);
                 glUniform1i(use_gouraud_shading_uniform, false);
                 DrawVirtualObject("hand");
-                glm::vec4 hand_displacement(1.0f, -1.5f, 0.0f, 1.0f);
+                glm::vec4 hand_displacement(0.3f, -1.5f, 0.0f, 1.0f);
                 glm::vec4 hand_position = model * hand_displacement;
                 GameObject handObj = {"hand", SPHERE, hand_position, glm::vec3(), 0.4f};
                 gameObjectCollection["hand"] = handObj;
@@ -529,20 +530,16 @@ int main(int argc, char* argv[])
                 playerObj.name = "player";
                 playerObj.type = CUBE;
                 playerObj.position_center = camera_new_position;
-                playerObj.bbox = glm::vec3(0.5f, 2.0f, 0.5f);
+                playerObj.bbox = glm::vec3(0.3f, 2.0f, 0.3f);
                 playerObj.radius = 0.0f;
 
                 // Testa colisão do player para atualizar posição do player
                 std::vector<std::string> collided_with = collided(playerObj, gameObjectCollection);
-                if (collided_with.empty()) {
-                    camera_position_c = camera_new_position;
-                } else  {
+                if (!collided_with.empty()) {
                     for (std::string objName : collided_with) {
                         // Atualiza direção do movimento de acordo com a direção do objeto colidido
                         move_direction = updateMovementDirection(playerObj, objName, move_direction, gameObjectCollection);
                     }
-                    // Atualiza a posição da câmera pela direção do deslocamento
-                    camera_new_position = camera_position_c + move_direction;
                 }
 
                 // Teste de colisões da mão
@@ -551,6 +548,13 @@ int main(int argc, char* argv[])
                     for (std::string objName : collided_with) {
                         // Caso a mão tenha colidido com um cubo, é preciso atualizar a possição do cubo caso possível
                         if (objName.find("cube") != std::string::npos) {
+                            glm::vec4 closest_point = getClosestPointToCenter(gameObjectCollection[objName], handObj);
+                            glm::vec4 cube_dir = closest_point - handObj.position_center;
+                            
+                            // Caso haja colisão, mas a direção do movimento é diferente da direção do cubo, ele não deve se movimentar
+                            if (norm(cube_dir) != 0 && closest_direction(cube_dir) != closest_direction(move_direction))
+                                continue;
+
                             int cube_idx = objName[4] - '0';
                             glm::vec4 cube_new_pos = cube_pos[cube_idx] + move_direction;
                             GameObject cubeObj = {objName, CUBE, cube_new_pos, gameObjectCollection[objName].bbox, 0.0f};
@@ -559,25 +563,27 @@ int main(int argc, char* argv[])
                                 // Atualiza a posição do cubo caso não tenha colidido com nada
                                 cube_pos[cube_idx] = cube_new_pos;
                             } else {
-                                for (auto& name : cube_collided) {
+                                for (std::string name : cube_collided) {
                                     if (name.compare("hand") != 0) {
                                         // Caso o cubo tenha colidido com algum objeto além da mão, é nessário atualizar a direção do movimento
-                                        move_direction = updateMovementDirection(cubeObj, objName, move_direction, gameObjectCollection);
-                                        camera_new_position = camera_position_c + move_direction;
-                                        break;
+                                        move_direction = updateMovementDirection(cubeObj, name, move_direction, gameObjectCollection);
                                     }
                                 }
+                                cube_pos[cube_idx] += move_direction;
                             }
 
                             // Atualiza posição do cubo nos objetos da cena
                             cubeObj.position_center = cube_pos[cube_idx];
                             gameObjectCollection[objName] = cubeObj;
+                        } else {
+                            // Atualiza a direção do movimento da câmera (não ajusta rotação) de acorco com colisão da mão
+                            move_direction = updateMovementDirection(handObj, objName, move_direction, gameObjectCollection);
                         }
                     }
                 }
 
                 // Atualiza posição do player de acordo com o movimento computado após testes de colisão
-                camera_position_c = camera_new_position;
+                camera_position_c += move_direction;
                 playerObj.position_center = camera_position_c;
 
                 // Avalia se o cubo está numa posição final e sinaliza se o jogador ganhou
