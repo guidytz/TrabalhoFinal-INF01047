@@ -288,7 +288,7 @@ int main(int argc, char* argv[])
 
     // Carregamos duas imagens para serem utilizadas como textura
     LoadTextureImage("../../data/cinza.jpg");      // TextureImage0
-    LoadTextureImage("../../data/laranja.jpg"); // TextureImage1
+    LoadTextureImage("../../data/wood.png"); // TextureImage1
     LoadTextureImage("../../data/hand/textures/handtexture.jpg"); // TextureImage2
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
@@ -428,6 +428,9 @@ int main(int argc, char* argv[])
                     t = 0;
                 }
 
+                // Desenhamos então os outros dois troféus menores que se deslocam através de curvas de Bézier
+
+                // Pontos de controle para a curva de Bezier de um dos trofeis que se deslocam
                 glm::vec4 p1 = glm::vec4(-2.0f,-1.0f,1.0f,1.0f);
                 glm::vec4 p2 = glm::vec4(-1.0f,1.0f,-1.0f,1.0f);
                 glm::vec4 p3 = glm::vec4(1.0f,1.0f,-1.0f,1.0f);
@@ -443,6 +446,7 @@ int main(int argc, char* argv[])
                 glUniform1i(use_gouraud_shading_uniform, true);
                 DrawVirtualObject("trophy");
 
+                // Pontos de controle para a curva de Bezier o outro trofeu que se desloca
                 p1 = glm::vec4(2.0f,-1.0f,-1.0f,1.0f);
                 p2 = glm::vec4(1.0f,1.0f,1.0f,1.0f);
                 p3 = glm::vec4(-1.0f,1.0f,1.0f,1.0f);
@@ -478,10 +482,6 @@ int main(int argc, char* argv[])
 
                 // Computamos a matriz "View" utilizando os parâmetros da câmera para
                 glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
-
-                // TextRendering_PrintMatrix(window, view, -1.0f, 1.0f - pad, 1.0f);
-
-                // PrintMatrix(view);
 
                 glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
 
@@ -520,6 +520,8 @@ int main(int argc, char* argv[])
                 glUniform1i(object_id_uniform, HAND);
                 glUniform1i(use_gouraud_shading_uniform, false);
                 DrawVirtualObject("hand");
+
+                // Modelo de uma esfera para testar as colisões da mão com os cubos do jogo
                 glm::vec4 hand_displacement(0.3f, -2.5f, 0.0f, 1.0f);
                 glm::vec4 hand_position = model * hand_displacement;
                 GameObject handObj = {"hand", SPHERE, hand_position, glm::vec3(), 0.4f};

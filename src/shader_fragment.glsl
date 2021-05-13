@@ -89,64 +89,33 @@ void main()
 
         vec3 Kd = vec3(0.0, 0.0, 0.0); // Refletância difusa
         vec3 Ks = vec3(0.0, 0.0, 0.0); // Refletância especular
-        vec3 Ka = vec3(0.0, 0.0, 0.0); // Refletância ambiente
         float q = 1; // Expoente especular para o modelo de iluminação de Blinn-Phong
 
 
         if ( object_id == MAPA )
         {
-            // PREENCHA AQUI as coordenadas de textura da esfera, computadas com
-            // projeção esférica EM COORDENADAS DO MODELO. Utilize como referência
-            // o slides 134-150 do documento Aula_20_Mapeamento_de_Texturas.pdf.
-            // A esfera que define a projeção deve estar centrada na posição
-            // "bbox_center" definida abaixo.
 
-            // Você deve utilizar:
-            //   função 'length( )' : comprimento Euclidiano de um vetor
-            //   função 'atan( , )' : arcotangente. Veja https://en.wikipedia.org/wiki/Atan2.
-            //   função 'asin( )'   : seno inverso.
-            //   constante M_PI
-            //   variável position_model
-
-            vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
-            vec4 pl = bbox_center + normalize(position_model - bbox_center);
-            vec4 vp = pl - bbox_center;
-            float theta = atan(vp.x, vp.z);
-            float rho = asin(vp.y);
-
-            U = (theta + M_PI) / (2 * M_PI);
-            V = (rho + M_PI_2) / M_PI;
+            U = texcoords.x;
+            V = texcoords.y;
             Ks = vec3(0.0, 0.0, 0.0);
-            Ka = vec3(0.5, 0.5, 0.5);
             Kd = texture(TextureImage0, vec2(U,V)).rgb;
             q = 1;
         }
         else if ( object_id == HAND )
         {
-            // PREENCHA AQUI as coordenadas de textura do coelho, computadas com
-            // projeção planar XY em COORDENADAS DO MODELO. Utilize como referência
-            // o slides 99-104 do documento Aula_20_Mapeamento_de_Texturas.pdf,
-            // e também use as variáveis min*/max* definidas abaixo para normalizar
-            // as coordenadas de textura U e V dentro do intervalo [0,1]. Para
-            // tanto, veja por exemplo o mapeamento da variável 'p_v' utilizando
-            // 'h' no slides 158-160 do documento Aula_20_Mapeamento_de_Texturas.pdf.
-            // Veja também a Questão 4 do Questionário 4 no Moodle.
 
             U = texcoords.x;
             V = texcoords.y;
             Ks = vec3(0.0, 0.0, 0.0);
-            Ka = vec3(0.1, 0.1, 0.1);
             Kd = texture(TextureImage2, vec2(U,V)).rgb;
             q = 1;
         }
         else if ( object_id == CUBO )
         {
-            // Coordenadas de textura do plano, obtidas do arquivo OBJ.
             U = texcoords.x;
             V = texcoords.y;
 
             Ks = vec3(0.0, 0.0, 0.0);
-            Ka = vec3(0.5, 0.5, 0.5);
             Kd = texture(TextureImage1, vec2(U,V)).rgb;
             q = 1;
         }
@@ -154,7 +123,6 @@ void main()
         {
 
             Ks = vec3(0.8, 0.8, 0.8);
-            Ka = vec3(0.1, 0.1, 0.1);
             Kd = vec3(0.54, 0.45, 0.0);
             q = 80.0;
             h = l = v;
@@ -163,13 +131,13 @@ void main()
         vec3 I = vec3(1.0,1.0,1.0);
 
         // Espectro da luz ambiente
-        vec3 Ia = vec3(0.01, 0.01, 0.01);
+        vec3 Ia = vec3(0.05, 0.05, 0.05);
 
         // Termo difuso utilizando a lei dos cossenos de Lambert
         vec3 lambert_diffuse_term = Kd * I * max(0, dot(n, l));
 
-        // Termo ambiente
-        vec3 ambient_term = Ka * Ia;
+        // Termo ambiente usando o termo difuso com uma luz fraca ambiente
+        vec3 ambient_term = Kd * Ia;
 
         // Termo especular utilizando o modelo de iluminação de Phong
         vec3 blinn_phong_specular_term  = Ks * I * pow(max(0, dot(n, h)), q);
