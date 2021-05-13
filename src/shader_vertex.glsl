@@ -71,7 +71,6 @@ void main()
         vec4 camera_position = inverse(view) * origin;
 
         vec3 Ks = vec3(0.8, 0.8, 0.8);
-        vec3 Ka = vec3(0.1, 0.1, 0.1);
         vec3 Kd = vec3(0.54, 0.45, 0.0);
         float q = 80.0;
         
@@ -91,13 +90,13 @@ void main()
         vec3 I = vec3(1.0,1.0,1.0);
 
         // Espectro da luz ambiente
-        vec3 Ia = vec3(0.01, 0.01, 0.01); 
+        vec3 Ia = vec3(0.05, 0.05, 0.05); 
 
         // Termo difuso utilizando a lei dos cossenos de Lambert
         vec3 lambert_diffuse_term = Kd * I * max(0, dot(n, l)); 
 
         // Termo ambiente
-        vec3 ambient_term = Ka * Ia; 
+        vec3 ambient_term = Kd * Ia; 
 
         // Termo especular utilizando o modelo de iluminação de Phong
         vec3 blinn_phong_specular_term  = Ks * I * pow(max(0, dot(n, h)), q); 
