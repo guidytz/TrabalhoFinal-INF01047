@@ -200,6 +200,7 @@ static double limitFPS = 1.0f / 75.0f;
 
 // Posições iniciais dos cubos renderizados
 glm::vec4 cube_pos[4];
+int cubos_in_corner[4];
 
 int main(int argc, char* argv[])
 {
@@ -496,22 +497,17 @@ int main(int argc, char* argv[])
                 glUniform1i(use_gouraud_shading_uniform, false);
                 DrawVirtualObject("mapa");
 
-                // Desenhamos o  cubo
-                model = Matrix_Translate(cube_pos[0].x, cube_pos[0].y, cube_pos[0].z);
-                glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-                glUniform1i(object_id_uniform, CUBO);
-                glUniform1i(use_gouraud_shading_uniform, false);
-                DrawVirtualObject("cubo");
-                glm::vec3 cube_bbox = glm::abs(g_VirtualScene["cubo"].bbox_min) + glm::abs(g_VirtualScene["cubo"].bbox_max);
-                cube_bbox /= 2;
-                gameObjectCollection["cube0"] = {"cube0", CUBE, cube_pos[0], cube_bbox, 0.0f};
-
-                // model = Matrix_Translate(cube_pos[1].x, cube_pos[1].y, cube_pos[1].z);
-                // glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-                // glUniform1i(object_id_uniform, CUBO);
-                // glUniform1i(use_gouraud_shading_uniform, false);
-                // DrawVirtualObject("cubo");
-                // gameObjectCollection["cube1"] = {"cube1", CUBE, cube_pos[1], glm::vec3(0.5f, 0.5f, 0.5f), 0.0f};
+                // Desenhamos os cubos
+                for (int aux=0; aux < 4; aux++){
+                    model = Matrix_Translate(cube_pos[aux].x, cube_pos[aux].y, cube_pos[aux].z);
+                    glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                    glUniform1i(object_id_uniform, CUBO);
+                    glUniform1i(use_gouraud_shading_uniform, false);
+                    DrawVirtualObject("cubo");
+                    glm::vec3 cube_bbox = glm::abs(g_VirtualScene["cubo"].bbox_min) + glm::abs(g_VirtualScene["cubo"].bbox_max);
+                    cube_bbox /= 2;
+                    gameObjectCollection["cube"+std::to_string(aux)] = {"cube"+std::to_string(aux), CUBE, cube_pos[aux], cube_bbox, 0.0f};
+                }
 
                 // Desenhando a mão
                 model = glm::inverse(view)
@@ -582,7 +578,18 @@ int main(int argc, char* argv[])
 
                 // Atualiza posição do player de acordo com o movimento computado após testes de colisão
                 camera_position_c = camera_new_position;
-                playerObj.position_center = camera_position_c; 
+                playerObj.position_center = camera_position_c;
+
+                // Avalia se o cubo está numa posição final e sinaliza se o jogador ganhou
+                int box_in_position = 0;
+                for (int aux=0; aux < 4; aux++){
+                    if(cubos_in_corner[aux] == 1)
+                        box_in_position++;
+                }
+                if (box_in_position == 4)
+                    victory = true;
+
+
             }
             delta_time--;
         }
@@ -1631,8 +1638,16 @@ void resetGame() {
     victory = false;
 
     // Reposiciona os cubos na posição inicial
-    cube_pos[0] = glm::vec4(2.5f, -0.3f, 3.0f, 1.0f);
-    cube_pos[1] = glm::vec4(0.5f, -0.3f, 2.0f, 1.0f);
+    cube_pos[0] = glm::vec4(-3.5f, -0.3f, 3.5f, 1.0f);
+    cube_pos[1] = glm::vec4(2.5f, -0.3f, 3.5f, 1.0f);
+    cube_pos[2] = glm::vec4(-3.5f, -0.3f, -3.5f, 1.0f);
+    cube_pos[3] = glm::vec4(2.5f, -0.3f, -3.5f, 1.0f);
+
+    // reinicia o vetor de verificação dos cubos nos cantos (local correto)
+    cubos_in_corner[0] = 0;
+    cubos_in_corner[1] = 0;
+    cubos_in_corner[2] = 0;
+    cubos_in_corner[3] = 0;
 
     // Reseta os parâmetros para as curvas de bezier dos troféus
     t = 0.0f;
