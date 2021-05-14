@@ -44,6 +44,9 @@
 #include "matrices.h"
 #include "collisions.h"
 
+// Bibliotecas para uso de sons
+#include <conio.h>
+#include <irrKlang/irrKlang.h>
 
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
@@ -349,6 +352,15 @@ int main(int argc, char* argv[])
     double last_update = glfwGetTime();
     double delta_time = 0, curr_time = 0;
 
+    // Engine para sons
+    irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
+    
+    if (!engine) {
+        fprintf(stdout, "ERROR: Sound engine not loaded!");
+    }
+
+    double last_slide_sound = glfwGetTime();
+
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
     {
@@ -573,6 +585,12 @@ int main(int argc, char* argv[])
                                 }
                                 cube_pos[cube_idx] += move_direction;
                             }
+                            if (cubeObj.position_center != cube_pos[cube_idx]) {
+                                if (curr_time - last_slide_sound >= 0.4) {
+                                    if (engine) engine->play2D("../../data/sounds/slide.wav");
+                                    last_slide_sound = curr_time;
+                                }
+                            }
 
                             // Atualiza posição do cubo nos objetos da cena
                             cubeObj.position_center = cube_pos[cube_idx];
@@ -591,11 +609,15 @@ int main(int argc, char* argv[])
                 // Avalia se o cubo está numa posição final e sinaliza se o jogador ganhou
                 int box_in_position = 0;
                 for (int aux=0; aux < 4; aux++){
-                    if(cubos_in_corner[aux] == 1)
+                    if(cubos_in_corner[aux] == 1) {
                         box_in_position++;
+                        if (engine) engine->play2D("../../data/sounds/hit.wav");
+                    }
                 }
-                if (box_in_position == 4)
+                if (box_in_position == 4) {
                     victory = true;
+                    if (engine) engine->play2D("../../data/sounds/tada.wav");
+                }
 
 
             }

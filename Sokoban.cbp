@@ -85,7 +85,9 @@
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
-					<Add option="lib-mingw-32\libglfw3.a -lgdi32 -lopengl32" />
+					<Add option="lib-mingw-32\libirrKlang.a lib-mingw-32\libglfw3.a -lgdi32 -lopengl32" />
+					<Add library="lib-mingw-32/libirrKlang.a" />
+					<Add library="lib-mingw-32/irrKlang.lib" />
 				</Linker>
 			</Target>
 		</Build>
@@ -99,6 +101,8 @@
 			<Add option="-static-libgcc" />
 			<Add option="-static" />
 			<Add option="lib\libglfw3.a -lgdi32 -lopengl32" />
+			<Add library="lib/libglfw3.a" />
+			<Add library="lib/libglfw3dll.a" />
 			<Add directory="lib" />
 		</Linker>
 		<Unit filename="include/GLFW/glfw3.h" />
@@ -369,6 +373,27 @@
 		<Unit filename="include/glm/vec3.hpp" />
 		<Unit filename="include/glm/vec4.hpp" />
 		<Unit filename="include/glm/vector_relational.hpp" />
+		<Unit filename="include/irrKlang/ik_ESoundEngineOptions.h" />
+		<Unit filename="include/irrKlang/ik_ESoundOutputDrivers.h" />
+		<Unit filename="include/irrKlang/ik_EStreamModes.h" />
+		<Unit filename="include/irrKlang/ik_IAudioRecorder.h" />
+		<Unit filename="include/irrKlang/ik_IAudioStream.h" />
+		<Unit filename="include/irrKlang/ik_IAudioStreamLoader.h" />
+		<Unit filename="include/irrKlang/ik_IFileFactory.h" />
+		<Unit filename="include/irrKlang/ik_IFileReader.h" />
+		<Unit filename="include/irrKlang/ik_IRefCounted.h" />
+		<Unit filename="include/irrKlang/ik_ISound.h" />
+		<Unit filename="include/irrKlang/ik_ISoundDeviceList.h" />
+		<Unit filename="include/irrKlang/ik_ISoundEffectControl.h" />
+		<Unit filename="include/irrKlang/ik_ISoundEngine.h" />
+		<Unit filename="include/irrKlang/ik_ISoundMixedOutputReceiver.h" />
+		<Unit filename="include/irrKlang/ik_ISoundSource.h" />
+		<Unit filename="include/irrKlang/ik_ISoundStopEventReceiver.h" />
+		<Unit filename="include/irrKlang/ik_IVirtualRefCounted.h" />
+		<Unit filename="include/irrKlang/ik_SAudioStreamFormat.h" />
+		<Unit filename="include/irrKlang/ik_irrKlangTypes.h" />
+		<Unit filename="include/irrKlang/ik_vec3d.h" />
+		<Unit filename="include/irrKlang/irrKlang.h" />
 		<Unit filename="include/matrices.h" />
 		<Unit filename="include/stb_image.h" />
 		<Unit filename="include/tiny_obj_loader.h" />
