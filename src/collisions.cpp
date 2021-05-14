@@ -144,9 +144,11 @@ glm::vec4 updateMovementDirection(GameObject movingObj,
         move_direction.z = 0.0f;
     } else if (collidedName.find("cube") != std::string::npos ||
                 collidedName.find("wall") != std::string::npos) {
+
         glm::vec4 closest_cube_point = getClosestPointToCenter(gameObjectCollection[collidedName], movingObj);
         glm::vec4 cube_dir = closest_cube_point - movingObj.position_center;
         XZDirection direction = closest_direction(cube_dir);
+        
         if (direction == WEST || direction == EAST) { // Caso a colisão tenha acontecido na direção do eixo x
             glm::vec4 x_dir(move_direction.x, 0.0f, 0.0f, 0.0f);
             x_dir *= 100; // necessário por conta do valor pequeno no vetor de direção

@@ -9,6 +9,7 @@ enum ObjectType
     SPHERE
 };
 
+// Definição das direções a serem usadas para teste de qual a direção principal da colisão
 enum XZDirection {
     WEST,
     EAST,
@@ -17,6 +18,7 @@ enum XZDirection {
     NONE
 };
 
+// Estrutura que armazena informações necessárias para os testes de colisão dos objetos do jogo
 struct GameObject 
 {
     std::string name;

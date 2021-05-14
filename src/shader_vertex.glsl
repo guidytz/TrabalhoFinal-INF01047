@@ -10,6 +10,8 @@ layout (location = 2) in vec2 texture_coefficients;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+
+// Variável que seta se deve ser usado gouraud shadding no objeto processado
 uniform bool use_gouraud_shading;
 
 // Atributos de v�rtice que ser�o gerados como sa�da ("out") pelo Vertex Shader.
