@@ -28,6 +28,7 @@ in vec3 gouraud_color;
 #define HAND    1
 #define CUBO    2
 #define TROPHY  3
+#define OBJETIVO 4
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -38,6 +39,7 @@ uniform vec4 bbox_max;
 uniform sampler2D TextureImage0;
 uniform sampler2D TextureImage1;
 uniform sampler2D TextureImage2;
+uniform sampler2D TextureImage3;
 
 // O valor de saída ("out") de um Fragment Shader é a cor final do fragmento.
 out vec3 color;
@@ -53,7 +55,7 @@ void main()
         color = gouraud_color;
     } else {
         // Caso não use interpolação de Gouraud, significa que é preciso fazer as operações necessárias para a
-        // interpolação de Phong 
+        // interpolação de Phong
 
         // Obtemos a posição da câmera utilizando a inversa da matriz que define o
         // sistema de coordenadas da câmera.
@@ -117,6 +119,15 @@ void main()
 
             Ks = vec3(0.0, 0.0, 0.0);
             Kd = texture(TextureImage1, vec2(U,V)).rgb;
+            q = 1;
+        }
+        else if ( object_id == OBJETIVO )
+        {
+            U = texcoords.x;
+            V = texcoords.y;
+
+            Ks = vec3(0.0, 0.0, 0.0);
+            Kd = vec3(0.0, 1.0, 0.3);
             q = 1;
         }
         else if ( object_id == TROPHY )
