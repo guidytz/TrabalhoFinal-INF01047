@@ -206,10 +206,14 @@ static double limitFPS = 1.0f / 75.0f;
 #define HAND    1
 #define CUBO    2
 #define TROPHY  3
+#define OBJETIVO 4
 
 // Posições iniciais dos cubos renderizados
 glm::vec4 cube_pos[4];
-int cubos_in_corner[4];
+// Posições dos retângulos que apontam para onde devem ser empurradas as caixas
+glm::vec4 obj_pos[4];
+// Posições dos cantos
+glm::vec3 cantos[4];
 
 int main(int argc, char* argv[])
 {
@@ -289,8 +293,8 @@ int main(int argc, char* argv[])
     //
     LoadShadersFromFiles();
 
-    // Carregamos duas imagens para serem utilizadas como textura
-    LoadTextureImage("../../data/cinza.jpg");      // TextureImage0
+    // Carregamos as imagens para serem utilizadas como textura
+    LoadTextureImage("../../data/chumbo.jpg");      // TextureImage0
     LoadTextureImage("../../data/wood.png"); // TextureImage1
     LoadTextureImage("../../data/hand/textures/handtexture.jpg"); // TextureImage2
 
@@ -310,6 +314,10 @@ int main(int argc, char* argv[])
     ObjModel trophymodel("../../data/trophy/trophy.obj");
     ComputeNormals(&trophymodel);
     BuildTrianglesAndAddToVirtualScene(&trophymodel);
+
+    ObjModel objmodel("../../data/objetivo.obj");
+    ComputeNormals(&objmodel);
+    BuildTrianglesAndAddToVirtualScene(&objmodel);
 
     if ( argc > 1 )
     {
@@ -353,11 +361,11 @@ int main(int argc, char* argv[])
     double delta_time = 0, curr_time = 0;
 
     // Engine para sons
-    irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
-    
-    if (!engine) {
+    //irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
+
+    /*if (!engine) {
         fprintf(stdout, "ERROR: Sound engine not loaded!");
-    }
+    }*/
 
     double last_slide_sound = glfwGetTime();
 
@@ -522,6 +530,18 @@ int main(int argc, char* argv[])
                     gameObjectCollection["cube"+std::to_string(aux)] = {"cube"+std::to_string(aux), CUBE, cube_pos[aux], cube_bbox, 0.0f};
                 }
 
+                // Desenhamos os objetivos
+                for (int aux=0; aux < 4; aux++){
+                    model = Matrix_Translate(obj_pos[aux].x, obj_pos[aux].y, obj_pos[aux].z);
+                    glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+                    glUniform1i(object_id_uniform, OBJETIVO);
+                    glUniform1i(use_gouraud_shading_uniform, false);
+                    DrawVirtualObject("objetivo");
+                    glm::vec3 obj_bbox = glm::abs(g_VirtualScene["objetivo"].bbox_min) + glm::abs(g_VirtualScene["objetivo"].bbox_max);
+                    obj_bbox /= 2;
+                    //gameObjectCollection["objetivo"+std::to_string(aux)] = {"objetivo"+std::to_string(aux), OBJETIVO, obj_pos[aux], obj_bbox, 0.0f};
+                }
+
                 // Desenhando a mão
                 model = glm::inverse(view)
                     * Matrix_Translate(0.3f, -0.3f, -1.0f)
@@ -531,7 +551,9 @@ int main(int argc, char* argv[])
                 glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
                 glUniform1i(object_id_uniform, HAND);
                 glUniform1i(use_gouraud_shading_uniform, false);
+                glDisable(GL_DEPTH_TEST);
                 DrawVirtualObject("hand");
+                glEnable(GL_DEPTH_TEST);
 
                 // Modelo de uma esfera para testar as colisões da mão com os cubos do jogo
                 glm::vec4 hand_displacement(0.3f, -2.5f, 0.0f, 1.0f);
@@ -564,7 +586,7 @@ int main(int argc, char* argv[])
                         if (objName.find("cube") != std::string::npos) {
                             glm::vec4 closest_point = getClosestPointToCenter(gameObjectCollection[objName], handObj);
                             glm::vec4 cube_dir = closest_point - handObj.position_center;
-                            
+
                             // Caso haja colisão, mas a direção do movimento é diferente da direção do cubo, ele não deve se movimentar
                             if (norm(cube_dir) != 0 && closest_direction(cube_dir) != closest_direction(move_direction))
                                 continue;
@@ -587,7 +609,7 @@ int main(int argc, char* argv[])
                             }
                             if (cubeObj.position_center != cube_pos[cube_idx]) {
                                 if (curr_time - last_slide_sound >= 0.4) {
-                                    if (engine) engine->play2D("../../data/sounds/slide.wav");
+                                    //if (engine) engine->play2D("../../data/sounds/slide.wav");
                                     last_slide_sound = curr_time;
                                 }
                             }
@@ -608,15 +630,21 @@ int main(int argc, char* argv[])
 
                 // Avalia se o cubo está numa posição final e sinaliza se o jogador ganhou
                 int box_in_position = 0;
-                for (int aux=0; aux < 4; aux++){
-                    if(cubos_in_corner[aux] == 1) {
-                        box_in_position++;
-                        if (engine) engine->play2D("../../data/sounds/hit.wav");
+                for (int i = 0; i < 4; i++){
+                    for (int j = 0; j < 4; j++){
+                        float distance = glm::distance(cantos[j], {cube_pos[i].x, cube_pos[i].y, cube_pos[i].z});
+                        if (distance < 0.6f){
+                            box_in_position++;
+                            break;
+                        }
                     }
                 }
+
+                // após a verificação, caso os cubos estiverem nos cantos (posição objetivo),
+                // é declarada a vitória
                 if (box_in_position == 4) {
                     victory = true;
-                    if (engine) engine->play2D("../../data/sounds/tada.wav");
+                    //if (engine) engine->play2D("../../data/sounds/tada.wav");
                 }
 
 
@@ -1673,11 +1701,23 @@ void resetGame() {
     cube_pos[2] = glm::vec4(-3.5f, -0.3f, -3.5f, 1.0f);
     cube_pos[3] = glm::vec4(2.5f, -0.3f, -3.5f, 1.0f);
 
+    // Posiciona os objetivos na posição
+    obj_pos[0] = glm::vec4(-5.5f, 0.0f, 4.5f, 1.0f);
+    obj_pos[1] = glm::vec4(3.5f, 0.0f, 4.5f, 1.0f);
+    obj_pos[2] = glm::vec4(-5.5f, 0.0f, -4.5f, 1.0f);
+    obj_pos[3] = glm::vec4(3.5f, 0.0f, -4.5f, 1.0f);
+
+    // Defino as posições dos cantos
+    cantos[0] = glm::vec3(-5.5f, 0.2f, 4.5f);
+    cantos[1] = glm::vec3(3.5f, 0.2f, 4.5f);
+    cantos[2] = glm::vec3(-5.5f, 0.2f, -4.5f);
+    cantos[3] = glm::vec3(3.5f, 0.2f, -4.5f);
+
     // reinicia o vetor de verificação dos cubos nos cantos (local correto)
-    cubos_in_corner[0] = 0;
-    cubos_in_corner[1] = 0;
-    cubos_in_corner[2] = 0;
-    cubos_in_corner[3] = 0;
+    //cubos_in_corner[0] = 0;
+    //cubos_in_corner[1] = 0;
+    //cubos_in_corner[2] = 0;
+    //cubos_in_corner[3] = 0;
 
     // Reseta os parâmetros para as curvas de bezier dos troféus
     t = 0.0f;
