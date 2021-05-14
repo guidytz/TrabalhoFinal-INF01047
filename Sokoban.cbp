@@ -85,9 +85,11 @@
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
+					<Add option="-static-libstdc++" />
+					<Add option="-static-libgcc" />
+					<Add option="-static" />
 					<Add option="lib-mingw-32\libirrKlang.a lib-mingw-32\libglfw3.a -lgdi32 -lopengl32" />
 					<Add library="lib-mingw-32/libirrKlang.a" />
-					<Add library="lib-mingw-32/irrKlang.lib" />
 				</Linker>
 			</Target>
 		</Build>
