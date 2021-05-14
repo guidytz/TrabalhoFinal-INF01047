@@ -90,6 +90,7 @@
 					<Add option="-static" />
 					<Add option="lib-mingw-32\libirrKlang.a lib-mingw-32\libglfw3.a -lgdi32 -lopengl32" />
 					<Add library="lib-mingw-32/libirrKlang.a" />
+					<Add directory="lib-mingw-32" />
 				</Linker>
 			</Target>
 		</Build>
@@ -102,9 +103,10 @@
 			<Add option="-static-libstdc++" />
 			<Add option="-static-libgcc" />
 			<Add option="-static" />
-			<Add option="lib\libglfw3.a -lgdi32 -lopengl32" />
+			<Add option="lib\libirrKlang.a lib\libglfw3.a -lgdi32 -lopengl32" />
 			<Add library="lib/libglfw3.a" />
 			<Add library="lib/libglfw3dll.a" />
+			<Add library="lib/libirrKlang.a" />
 			<Add directory="lib" />
 		</Linker>
 		<Unit filename="include/GLFW/glfw3.h" />

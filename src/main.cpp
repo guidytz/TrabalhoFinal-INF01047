@@ -215,6 +215,10 @@ glm::vec4 obj_pos[4];
 // Posições dos cantos
 glm::vec3 cantos[4];
 
+// Definindo variáveis para controle de sons
+int hit_sound_counter, last_sound_counter;
+irrklang::ISoundEngine* engine = nullptr;
+
 int main(int argc, char* argv[])
 {
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
@@ -353,21 +357,23 @@ int main(int argc, char* argv[])
     gameObjectCollection["wall2"] = {"wall2", CUBE, glm::vec4(-1.0f, 0.0f, -0.5f, 1.0f), glm::vec3(3.0f, 5.0f, 0.5f), 0.0f};
 
 
-    // Definindo as posições iniciais dos cubos
-    resetGame();
 
     // Controle de tempo da aplicação
     double last_update = glfwGetTime();
     double delta_time = 0, curr_time = 0;
 
-    // Engine para sons
-    //irrklang::ISoundEngine* engine = irrklang::createIrrKlangDevice();
+    // Iniciando a engine de sons
+    engine = irrklang::createIrrKlangDevice();
 
-    /*if (!engine) {
+    if (!engine) {
         fprintf(stdout, "ERROR: Sound engine not loaded!");
-    }*/
+    }
 
+    // variável que controla quando acionar o som de slide da caixa
     double last_slide_sound = glfwGetTime();
+
+    // Definindo as posições iniciais dos cubos
+    resetGame();
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
@@ -592,7 +598,8 @@ int main(int argc, char* argv[])
                                 continue;
 
                             int cube_idx = objName[4] - '0';
-                            glm::vec4 cube_new_pos = cube_pos[cube_idx] + move_direction;
+                            glm::vec4 cube_old_pos = cube_pos[cube_idx];
+                            glm::vec4 cube_new_pos = cube_old_pos + move_direction;
                             GameObject cubeObj = {objName, CUBE, cube_new_pos, gameObjectCollection[objName].bbox, 0.0f};
                             std::vector<std::string> cube_collided = collided(cubeObj, gameObjectCollection);
                             if (cube_collided.empty()) {
@@ -607,9 +614,10 @@ int main(int argc, char* argv[])
                                 }
                                 cube_pos[cube_idx] += move_direction;
                             }
-                            if (cubeObj.position_center != cube_pos[cube_idx]) {
+                            if (cube_old_pos != cube_pos[cube_idx]) {
+                                // Caso alguma caixa tenha se mexido e já tenha passado mais do que 400ms, tocar som da caixa deslizando
                                 if (curr_time - last_slide_sound >= 0.4) {
-                                    //if (engine) engine->play2D("../../data/sounds/slide.wav");
+                                    if (engine) engine->play2D("../../data/sounds/slide.wav");
                                     last_slide_sound = curr_time;
                                 }
                             }
@@ -635,16 +643,27 @@ int main(int argc, char* argv[])
                         float distance = glm::distance(cantos[j], {cube_pos[i].x, cube_pos[i].y, cube_pos[i].z});
                         if (distance < 0.6f){
                             box_in_position++;
+                            hit_sound_counter |= 1 << i;
                             break;
                         }
                     }
+                }
+                // Caso alguma das caixas tenha atingido o objetivo, mas não seja a última ainda, tocar som de hit
+                if (last_sound_counter != hit_sound_counter && box_in_position != 4) {
+                    if (engine) engine->play2D("../../data/sounds/hit.wav");
+                    last_sound_counter = hit_sound_counter;
                 }
 
                 // após a verificação, caso os cubos estiverem nos cantos (posição objetivo),
                 // é declarada a vitória
                 if (box_in_position == 4) {
                     victory = true;
-                    //if (engine) engine->play2D("../../data/sounds/tada.wav");
+                    // Som de vitória ao final
+                    if (engine) engine->play2D("../../data/sounds/tada.wav");
+
+                    // Reseta os ângulos da câmera
+                    g_CameraTheta = - M_PI_2; 
+                    g_CameraPhi = 0.0f;     
                 }
 
 
@@ -1722,6 +1741,10 @@ void resetGame() {
     // Reseta os parâmetros para as curvas de bezier dos troféus
     t = 0.0f;
     rising = true;
+
+    // Reseta variáveis de controle de hit para o som e também toca som de início de jogo
+    hit_sound_counter = last_sound_counter = 0;
+    if (engine) engine->play2D("../../data/sounds/start.wav");
 }
 
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
