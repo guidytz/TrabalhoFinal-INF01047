@@ -661,7 +661,8 @@ int main(int argc, char* argv[])
                     // Som de vitória ao final
                     if (engine) engine->play2D("../../data/sounds/tada.wav");
 
-                    // Reseta os ângulos da câmera
+                    // Reseta a posição para a câmera look-at
+                    g_CameraDistance = 3.5f;
                     g_CameraTheta = - M_PI_2; 
                     g_CameraPhi = 0.0f;     
                 }
@@ -1357,8 +1358,11 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     if (key == GLFW_KEY_T && action == GLFW_PRESS)
     {
         victory = !victory;
-        g_CameraTheta = - M_PI_2; // Ângulo no plano ZX em relação ao eixo Z
-        g_CameraPhi = 0.0f;   // Ângulo em relação ao eixo Y
+        
+        // Reseta a posição para a câmera look-at
+        g_CameraDistance = 3.5f;
+        g_CameraTheta = - M_PI_2; 
+        g_CameraPhi = 0.0f;   
     }
 
     // Se o usuário apertar a tecla H, fazemos um "toggle" do texto informativo mostrado na tela.
