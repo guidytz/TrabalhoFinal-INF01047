@@ -39,6 +39,9 @@
 					<Add option="-static-libstdc++" />
 					<Add option="-static-libgcc" />
 					<Add option="-static" />
+					<Add library="lib/libglfw3.a" />
+					<Add library="lib/libglfw3dll.a" />
+					<Add library="lib/libirrKlang.a" />
 				</Linker>
 			</Target>
 			<Target title="Linux">
