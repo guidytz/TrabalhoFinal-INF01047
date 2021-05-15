@@ -7,7 +7,11 @@
 //
 //                  TRABALHO FINAL
 //
-
+#if _WIN64 || __amd64__
+#define PORTABLE_64_BIT
+#else
+#define PORTABLE_32_BIT
+#endif
 
 #define _USE_MATH_DEFINES
 #include <cmath>
@@ -46,7 +50,10 @@
 
 // Bibliotecas para uso de sons
 #include <conio.h>
+
+#ifdef PORTABLE_32_BIT
 #include <irrKlang/irrKlang.h>
+#endif
 
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
@@ -217,7 +224,9 @@ glm::vec3 cantos[4];
 
 // Definindo variáveis para controle de sons
 int hit_sound_counter, last_sound_counter;
+#ifdef PORTABLE_32_BIT
 irrklang::ISoundEngine* engine = nullptr;
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -363,11 +372,13 @@ int main(int argc, char* argv[])
     double delta_time = 0, curr_time = 0;
 
     // Iniciando a engine de sons
+    #ifdef PORTABLE_32_BIT
     engine = irrklang::createIrrKlangDevice();
-
+    
     if (!engine) {
         fprintf(stdout, "ERROR: Sound engine not loaded!");
     }
+    #endif
 
     // variável que controla quando acionar o som de slide da caixa
     double last_slide_sound = glfwGetTime();
@@ -617,7 +628,9 @@ int main(int argc, char* argv[])
                             if (cube_old_pos != cube_pos[cube_idx]) {
                                 // Caso alguma caixa tenha se mexido e já tenha passado mais do que 400ms, tocar som da caixa deslizando
                                 if (curr_time - last_slide_sound >= 0.4) {
+                                    #ifdef PORTABLE_32_BIT
                                     if (engine) engine->play2D("../../data/sounds/slide.wav");
+                                    #endif  
                                     last_slide_sound = curr_time;
                                 }
                             }
@@ -650,7 +663,9 @@ int main(int argc, char* argv[])
                 }
                 // Caso alguma das caixas tenha atingido o objetivo, mas não seja a última ainda, tocar som de hit
                 if (last_sound_counter != hit_sound_counter && box_in_position != 4) {
+                    #ifdef PORTABLE_32_BIT
                     if (engine) engine->play2D("../../data/sounds/hit.wav");
+                    #endif
                     last_sound_counter = hit_sound_counter;
                 }
 
@@ -659,7 +674,9 @@ int main(int argc, char* argv[])
                 if (box_in_position == 4) {
                     victory = true;
                     // Som de vitória ao final
+                    #ifdef PORTABLE_32_BIT
                     if (engine) engine->play2D("../../data/sounds/tada.wav");
+                    #endif
 
                     // Reseta a posição para a câmera look-at
                     g_CameraDistance = 3.5f;
@@ -1737,7 +1754,9 @@ void resetGame() {
 
     // Reseta variáveis de controle de hit para o som e também toca som de início de jogo
     hit_sound_counter = last_sound_counter = 0;
+    #ifdef PORTABLE_32_BIT
     if (engine) engine->play2D("../../data/sounds/start.wav");
+    #endif
 }
 
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
